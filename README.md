@@ -7,7 +7,7 @@
 - 安装源码
 
 ```sh
-git clone --depth=1 -b system https://github.com/yoimiya-kokomi/Miao-Yunzai.git ./plugins/system
+git clone --depth=1 https://github.com/yunzai-org/system.git ./plugins/system
 ```
 
 ## 功能列表
