@@ -4,10 +4,22 @@
 
 ## 使用教程
 
-- 安装源码
+- install
 
 ```sh
-git clone --depth=1 https://github.com/yunzai-org/system.git ./plugins/system
+# npm
+npm install yz-system
+# yarn
+yarn add yz-system -W
+```
+
+- yunzai.config.js
+
+```js
+import system from 'yz-system'
+export default {
+    application: [system()]
+}
 ```
 
 ## 功能列表
