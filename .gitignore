@@ -5,3 +5,5 @@ yarn.lock
 types
 
 index.js
+
+package-lock.json

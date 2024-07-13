@@ -4,9 +4,6 @@ import { readFileSync } from 'node:fs'
 import { slice, isEmpty } from 'lodash-es'
 import moment from 'moment'
 
-/**
- *
- */
 export class sendLog extends Plugin {
   lineNum = 100
   maxNum = 1000

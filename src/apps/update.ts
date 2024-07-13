@@ -5,7 +5,8 @@ import { BOT_NAME, PLUGINS_PATH } from 'yunzai'
 import { exec, execSync } from 'child_process'
 import { Restart } from './restart.js'
 import { sleep } from 'yunzai'
-let uping = false
+import { Store } from '../store.js'
+
 
 /**
  *
@@ -43,7 +44,7 @@ export class update extends Plugin {
   async update() {
     // 不是主人
     if (!this.e.isMaster) return false
-    if (uping) {
+    if (Store.uping) {
       this.e.reply('正在更新中..请勿重复操作')
       return false
     }
@@ -135,13 +136,13 @@ export class update extends Plugin {
     await this.e.reply(`开始${type} ${this.typeName}`)
 
     //
-    uping = true
+    Store.uping = true
 
     //
     const ret = await this.execSync(cm)
 
     //
-    uping = false
+    Store.uping = false
 
     //
     if (ret.error) {

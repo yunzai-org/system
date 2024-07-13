@@ -1,32 +1,12 @@
 import fetch from 'node-fetch'
-import net from 'net'
 import { exec } from 'child_process'
 import { Plugin } from 'yunzai'
 import { join } from 'path'
 import { createRequire } from 'module'
 import { existsSync } from 'fs'
+import { Store } from '../store'
+import { isPortTaken } from '../model'
 const require = createRequire(import.meta.url)
-
-/**
- *
- * @param port
- * @returns
- */
-const isPortTaken = async port => {
-  return new Promise(resolve => {
-    const tester = net
-      .createServer()
-      .once('error', () => resolve(true))
-      .once('listening', () =>
-        tester.once('close', () => resolve(false)).close()
-      )
-      .listen(port)
-  })
-}
-
-
-//
-const REDIS_RESTART_KEY = 'Yz:restart'
 
 //
 export class Restart extends Plugin {
@@ -51,7 +31,7 @@ export class Restart extends Plugin {
    *
    */
   async init() {
-    const data = await redis.get(REDIS_RESTART_KEY)
+    const data = await redis.get(Store.RESTART_KEY)
     if (data) {
       const restart = JSON.parse(data)
       const uin = restart?.uin || Bot.uin
@@ -68,7 +48,7 @@ export class Restart extends Plugin {
         /** 不发了，发不出去... */
         logger.debug(error)
       }
-      redis.del(REDIS_RESTART_KEY)
+      redis.del(Store.RESTART_KEY)
     }
 
     // 如果 return 'return' 则跳过解析
@@ -100,7 +80,7 @@ export class Restart extends Plugin {
       time: new Date().getTime()
     })
     const npm = await this.checkPnpm()
-    await redis.set(REDIS_RESTART_KEY, data, { EX: 120 })
+    await redis.set(Store.RESTART_KEY, data, { EX: 120 })
 
     /**
      *
@@ -111,12 +91,12 @@ export class Restart extends Plugin {
           `http://localhost:${restart_port}/restart`
         ).then(res => res.text())
         if (result !== `OK`) {
-          redis.del(REDIS_RESTART_KEY)
+          redis.del(Store.RESTART_KEY)
           this.e.reply(`操作失败！`)
           logger.error(`重启失败`)
         }
       } catch (error) {
-        redis.del(REDIS_RESTART_KEY)
+        redis.del(Store.RESTART_KEY)
         this.e.reply(`操作失败！\n${error}`)
       }
     } else {
@@ -126,7 +106,7 @@ export class Restart extends Plugin {
       try {
         exec(`${npm} run start`, { windowsHide: true }, (error, stdout, _) => {
           if (error) {
-            redis.del(REDIS_RESTART_KEY)
+            redis.del(Store.RESTART_KEY)
             this.e.reply(`操作失败！\n${error.stack}`)
             logger.error(`重启失败\n${error.stack}`)
           } else if (stdout) {
@@ -137,7 +117,7 @@ export class Restart extends Plugin {
           }
         })
       } catch (error) {
-        redis.del(REDIS_RESTART_KEY)
+        redis.del(Store.RESTART_KEY)
         this.e.reply(`操作失败！\n${error.stack ?? error}`)
       }
     }
