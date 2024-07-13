@@ -1,14 +1,14 @@
-import { Plugin, makeForwardMsg } from 'yunzai/core'
-import lodash from 'lodash'
+import { Plugin, makeForwardMsg } from 'yunzai'
+import { trim } from 'lodash-es'
 import { existsSync, readdirSync } from 'node:fs'
-import { BOT_NAME, PLUGINS_PATH } from 'yunzai/config'
+import { BOT_NAME, PLUGINS_PATH } from 'yunzai'
 import { exec, execSync } from 'child_process'
 import { Restart } from './restart.js'
-import { sleep } from 'yunzai/utils'
+import { sleep } from 'yunzai'
 let uping = false
 
 /**
- * 
+ *
  */
 export class update extends Plugin {
   typeName = BOT_NAME
@@ -37,8 +37,8 @@ export class update extends Plugin {
   }
 
   /**
-   * 
-   * @returns 
+   *
+   * @returns
    */
   async update() {
     // 不是主人
@@ -69,13 +69,12 @@ export class update extends Plugin {
     if (this.isUp) {
       setTimeout(this.restart, 2000)
     }
-
   }
 
   /**
-   * 
-   * @param plugin 
-   * @returns 
+   *
+   * @param plugin
+   * @returns
    */
   getPlugin(name = '') {
     if (!name || name == '') {
@@ -92,11 +91,11 @@ export class update extends Plugin {
   }
 
   /**
-   * 
-   * @param cmd 
-   * @returns 
+   *
+   * @param cmd
+   * @returns
    */
-  async execSync(cmd: string): Promise<{ error, stdout, stderr }> {
+  async execSync(cmd: string): Promise<{ error; stdout; stderr }> {
     return new Promise(resolve => {
       exec(cmd, { windowsHide: true }, (error, stdout, stderr) => {
         resolve({ error, stdout, stderr })
@@ -104,14 +103,12 @@ export class update extends Plugin {
     })
   }
 
-
   /**
-   * 
-   * @param plugin 
-   * @returns 
+   *
+   * @param plugin
+   * @returns
    */
   async runUpdate(plugin = '') {
-
     //
     this.isNowUp = false
 
@@ -169,9 +166,9 @@ export class update extends Plugin {
   }
 
   /**
-   * 
-   * @param name 
-   * @returns 
+   *
+   * @param name
+   * @returns
    */
   async getcommitId(name = '') {
     //
@@ -179,13 +176,13 @@ export class update extends Plugin {
     //
     if (name) cm = `cd "plugins/${name}" && ${cm}`
     const commitId = await execSync(cm, { encoding: 'utf-8' })
-    return lodash.trim(commitId)
+    return trim(commitId)
   }
 
   /**
-   * 
-   * @param plugin 
-   * @returns 
+   *
+   * @param plugin
+   * @returns
    */
   async getTime(plugin = '') {
     let cm = 'git log -1 --pretty=%cd --date=format:"%F %T"'
@@ -194,7 +191,7 @@ export class update extends Plugin {
     let time = ''
     try {
       time = await execSync(cm, { encoding: 'utf-8' })
-      time = lodash.trim(time)
+      time = trim(time)
     } catch (error) {
       logger.error(error.toString())
       time = '获取时间失败'
@@ -204,10 +201,10 @@ export class update extends Plugin {
   }
 
   /**
-   * 
-   * @param err 
-   * @param stdout 
-   * @returns 
+   *
+   * @param err
+   * @param stdout
+   * @returns
    */
   async gitErr(err, stdout) {
     const msg = '更新失败！'
@@ -240,7 +237,7 @@ export class update extends Plugin {
   }
 
   /**
-   * 
+   *
    */
   async updateAll() {
     // 得到目录下的所有插件
@@ -280,9 +277,9 @@ export class update extends Plugin {
   }
 
   /**
-   * 
-   * @param name 
-   * @returns 
+   *
+   * @param name
+   * @returns
    */
   async getLog(name = '') {
     let cm = 'git log -100 --pretty="%h||[%cd] %s" --date=format:"%F %T"'
@@ -348,8 +345,8 @@ export class update extends Plugin {
   }
 
   /**
-   * 
-   * @returns 
+   *
+   * @returns
    */
   async updateLog() {
     const name = this.getPlugin()
@@ -360,7 +357,7 @@ export class update extends Plugin {
     if (msg) {
       this.e.reply(msg)
     } else {
-      this.e.reply("日志获取失败~")
+      this.e.reply('日志获取失败~')
     }
     return
   }

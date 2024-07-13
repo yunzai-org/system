@@ -1,7 +1,7 @@
 import fetch from 'node-fetch'
 import net from 'net'
 import { exec } from 'child_process'
-import { Plugin } from 'yunzai/core'
+import { Plugin } from 'yunzai'
 import { join } from 'path'
 import { createRequire } from 'module'
 import { existsSync } from 'fs'
@@ -24,14 +24,11 @@ const isPortTaken = async port => {
   })
 }
 
-/**
- * 
- */
+
+//
 const REDIS_RESTART_KEY = 'Yz:restart'
 
-/**
- *
- */
+//
 export class Restart extends Plugin {
   constructor() {
     super()
@@ -51,7 +48,7 @@ export class Restart extends Plugin {
   }
 
   /**
-   * 
+   *
    */
   async init() {
     const data = await redis.get(REDIS_RESTART_KEY)
@@ -77,10 +74,9 @@ export class Restart extends Plugin {
     // 如果 return 'return' 则跳过解析
   }
 
-
   /**
-   * 
-   * @returns 
+   *
+   * @returns
    */
   async restart() {
     // 开始询问是否有正在运行的同实例进程
@@ -88,14 +84,14 @@ export class Restart extends Plugin {
     if (!existsSync(dir)) {
       // 不存在配置，错误
       this.e.reply('pm2 配置丢失')
-      return 
+      return
     }
     const cfg = require(dir)
     const restart_port = cfg?.restart_port || 27881
     await this.e.reply('开始执行重启，请稍等...')
     logger.mark(`${this.e.logFnc} 开始执行重启，请稍等...`)
     /**
-     * 
+     *
      */
     const data = JSON.stringify({
       uin: this.e?.self_id || this.e.bot.uin,
@@ -107,7 +103,7 @@ export class Restart extends Plugin {
     await redis.set(REDIS_RESTART_KEY, data, { EX: 120 })
 
     /**
-     * 
+     *
      */
     if (await isPortTaken(restart_port)) {
       try {
@@ -125,10 +121,10 @@ export class Restart extends Plugin {
       }
     } else {
       /**
-       * 
+       *
        */
       try {
-        exec( `${npm} run start`, { windowsHide: true }, (error, stdout, _) => {
+        exec(`${npm} run start`, { windowsHide: true }, (error, stdout, _) => {
           if (error) {
             redis.del(REDIS_RESTART_KEY)
             this.e.reply(`操作失败！\n${error.stack}`)
@@ -149,19 +145,18 @@ export class Restart extends Plugin {
     return true
   }
 
-
   /**
-   * 
-   * @returns 
+   *
+   * @returns
    */
   async checkPnpm() {
     return 'npm'
   }
 
   /**
-   * 
-   * @param cmd 
-   * @returns 
+   *
+   * @param cmd
+   * @returns
    */
   async execSync(cmd) {
     return new Promise(resolve => {
@@ -172,8 +167,8 @@ export class Restart extends Plugin {
   }
 
   /**
-   * 
-   * @returns 
+   *
+   * @returns
    */
   async stop() {
     // 开始询问是否有正在运行的同实例进程
@@ -181,7 +176,7 @@ export class Restart extends Plugin {
     if (!existsSync(dir)) {
       // 不存在配置，错误
       this.e.reply('pm2 配置丢失')
-      return 
+      return
     }
     const cfg = require(dir)
     const restart_port = cfg?.restart_port || 27881

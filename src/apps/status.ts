@@ -1,6 +1,6 @@
-import { ConfigController as cfg } from 'yunzai/config'
+import { ConfigController as cfg } from 'yunzai'
 import moment from 'moment'
-import { Plugin } from 'yunzai/core'
+import { Plugin } from 'yunzai'
 
 /**
  *
@@ -34,7 +34,7 @@ export class status extends Plugin {
   }
 
   /**
-   * 
+   *
    */
   async statusMaster() {
     let runTime = moment().diff(
@@ -63,7 +63,7 @@ export class status extends Plugin {
   }
 
   /**
-   * 
+   *
    */
   async statusGroup() {
     let msg = '-------状态-------'

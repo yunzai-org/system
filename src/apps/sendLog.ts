@@ -1,7 +1,7 @@
-import { Plugin } from 'yunzai/core'
-import { makeForwardMsg } from 'yunzai/core'
+import { Plugin } from 'yunzai'
+import { makeForwardMsg } from 'yunzai'
 import { readFileSync } from 'node:fs'
-import lodash from 'lodash'
+import { slice, isEmpty } from 'lodash-es'
 import moment from 'moment'
 
 /**
@@ -20,7 +20,7 @@ export class sendLog extends Plugin {
      */
     super()
     /**
-     * 
+     *
      */
     this.rule = [
       {
@@ -50,9 +50,9 @@ export class sendLog extends Plugin {
     }
     if (this.keyWord) type = this.keyWord
     const log = this.getLog(logFile)
-    if (lodash.isEmpty(log)) {
+    if (isEmpty(log)) {
       this.reply(`暂无相关日志：${type}`)
-      return 
+      return
     }
     const data = await makeForwardMsg(
       this.e,
@@ -79,7 +79,7 @@ export class sendLog extends Plugin {
     if (this.keyWord) {
       for (const i in log) if (!log[i].includes(this.keyWord)) delete log[i]
     } else {
-      log = lodash.slice(log, (Number(this.lineNum) + 1) * -1)
+      log = slice(log, (Number(this.lineNum) + 1) * -1)
     }
     log = log.reverse()
     const tmp = []
