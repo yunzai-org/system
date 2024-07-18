@@ -21,7 +21,7 @@ export default (config?: Options) => {
          * 也就是响应前处理的函数
          * @returns 
          */
-        mounted(event) {
+        mounted() {
             // 把处理好的 this.data 丢给机器人
             return data
         },

@@ -1,6 +1,6 @@
 {
   "name": "yz-system",
-  "version": "1.0.0-rc.1",
+  "version": "1.0.0-rc.2",
   "author": "ningmengchongshui",
   "description": "yz-system",
   "type": "module",
@@ -20,7 +20,7 @@
     "rollup": "^4.16.4",
     "ts-node": "^10.9.2",
     "typescript": "^5.4.5",
-    "yunzai": "^1.0.0-rc.1"
+    "yunzai": "^1.0.0-rc.2"
   },
   "files": [
     "index.js",
@@ -33,6 +33,9 @@
       "types": "./types/index.d.ts"
     }
   },
+  "keywords": [
+    "yunzai"
+  ],
   "publishConfig": {
     "registry": "https://registry.npmjs.org"
   },
