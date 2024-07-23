@@ -1,12 +1,11 @@
 import * as apps from './apps.js'
 import { Options } from './types.js'
 import { Store } from './store'
-import { applicationOptions } from 'yunzai'
-
-// 存储
-const data = []
-
+import { applicationOptions, useAppStorage } from 'yunzai'
 export default (config?: Options) => {
+    // 存储
+    const data = useAppStorage()
+    // options
     return applicationOptions({
         create() {
             // init
@@ -27,5 +26,3 @@ export default (config?: Options) => {
         },
     })
 }
-
-//

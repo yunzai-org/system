@@ -1,4 +1,4 @@
-# System-Plugin
+# Yunzai-System
 
 提供一些必要的，对机器人进行管理的功能。
 
