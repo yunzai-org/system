@@ -3,8 +3,7 @@ import { makeForwardMsg } from 'yunzai'
 import { readFileSync } from 'node:fs'
 import { slice, isEmpty } from 'lodash-es'
 import moment from 'moment'
-
-export class sendLog extends Plugin {
+export class SendLog extends Plugin {
   lineNum = 100
   maxNum = 1000
   errFile = 'logs/error.log'

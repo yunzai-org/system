@@ -7,8 +7,6 @@ import { existsSync } from 'fs'
 import { Store } from '../store'
 import { isPortTaken } from '../model'
 const require = createRequire(import.meta.url)
-
-//
 export class Restart extends Plugin {
   constructor() {
     super()

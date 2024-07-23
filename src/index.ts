@@ -1,6 +1,6 @@
 import * as apps from './apps.js'
 import { Options } from './types.js'
-import { Store } from './store'
+import { Store } from './store.js'
 import { applicationOptions, useAppStorage } from 'yunzai'
 export default (config?: Options) => {
     // 存储
@@ -26,3 +26,7 @@ export default (config?: Options) => {
         },
     })
 }
+export * from './apps/restart.js'
+export * from './apps/sendLog.js'
+export * from './apps/status.js'
+export * from './apps/update.js'

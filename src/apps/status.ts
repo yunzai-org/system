@@ -1,11 +1,7 @@
 import { ConfigController as cfg } from 'yunzai'
 import moment from 'moment'
 import { Plugin } from 'yunzai'
-
-/**
- *
- */
-export class status extends Plugin {
+export class Status extends Plugin {
   /**
       name: '其他功能',
       dsc: '#状态',

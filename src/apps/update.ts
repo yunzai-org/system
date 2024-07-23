@@ -6,12 +6,7 @@ import { exec, execSync } from 'child_process'
 import { Restart } from './restart.js'
 import { sleep } from 'yunzai'
 import { Store } from '../store.js'
-
-
-/**
- *
- */
-export class update extends Plugin {
+export class Update extends Plugin {
   typeName = BOT_NAME
   messages = []
   isUp = null
@@ -68,7 +63,9 @@ export class update extends Plugin {
 
     //是否需要重启
     if (this.isUp) {
-      setTimeout(this.restart, 2000)
+      setTimeout(() => {
+        this.restart()
+      }, 2000)
     }
   }
 
@@ -242,7 +239,7 @@ export class update extends Plugin {
    */
   async updateAll() {
     // 得到目录下的所有插件
-    const dirs = readdirSync(`./${PLUGINS_PATH}/`)
+    const dirs = readdirSync(PLUGINS_PATH)
     // 校验
     const testReg = /^#静默全部(强制)?更新$/.test(this.e.msg)
     if (testReg) {
@@ -264,14 +261,16 @@ export class update extends Plugin {
       this.messages.push(msg)
     }
     if (this.isUp) {
-      setTimeout(this.restart, 2000)
+      setTimeout(() => {
+        this.restart()
+      }, 2000)
     }
   }
 
   /**
-   * 重启
+   * 
    */
-  restart() {
+  restart = () => {
     const con = new Restart()
     con.e = this.e
     con.restart()
