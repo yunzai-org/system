@@ -19,8 +19,7 @@
     "prettier": "^3.0.3",
     "rollup": "^4.16.4",
     "ts-node": "^10.9.2",
-    "typescript": "^5.4.5",
-    "yunzai": "^1.0.0-rc.2"
+    "typescript": "^5.4.5"
   },
   "files": [
     "index.js",

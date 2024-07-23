@@ -10,7 +10,15 @@ export default [
       format: 'es',
       sourcemap: false
     },
-    plugins: [typescript()],
+    plugins: [
+      typescript({
+        "compilerOptions": {
+          "declaration": true,
+          "declarationDir": "types"
+        },
+        "include": ["src/**/*"],
+      })
+    ],
     onwarn: (warning, warn) => {
       // 忽略与无法解析the导入相关the警告信息
       if (warning.code === 'UNRESOLVED_IMPORT') return
