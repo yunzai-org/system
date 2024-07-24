@@ -1,8 +1,7 @@
-import { Application, makeForwardMsg } from 'yunzai'
+import { Application, makeForwardMsg, execAsync } from 'yunzai'
 import { trim } from 'lodash-es'
 import { existsSync, readdirSync } from 'node:fs'
 import { BOT_NAME, PLUGINS_PATH } from 'yunzai'
-import { execSync } from 'child_process'
 import { Restart } from './restart.js'
 import { sleep } from 'yunzai'
 import { Store } from '../model/store.js'
@@ -42,8 +41,8 @@ async function getcommitId(name = '') {
   let cm = 'git rev-parse --short HEAD'
   //
   if (name) cm = `cd "plugins/${name}" && ${cm}`
-  const commitId = await execSync(cm, { encoding: 'utf-8' })
-  return trim(commitId)
+  const commitId = await execAsync(cm)
+  return trim(commitId?.stderr ?? commitId.stdout)
 }
 
 /**
@@ -60,7 +59,7 @@ async function getLog(name = '') {
 
   //
   try {
-    logAll = await execSync(cm, { encoding: 'utf-8' })
+    logAll = (await execAsync(cm)).stdout
   } catch (error) {
     // 不错啦
     logger.error(error.toString())
@@ -91,7 +90,7 @@ async function getLog(name = '') {
   try {
     cm = 'git config -l'
     if (name) cm = `cd "plugins/${name}" && ${cm}`
-    end = await execSync(cm, { encoding: 'utf-8' })
+    end = (await execAsync(cm)).stdout
     end = end
       .match(/remote\..*\.url=.+/g)
       .join('\n\n')
@@ -125,7 +124,7 @@ async function getTime(plugin = '') {
   if (plugin) cm = `cd "plugins/${plugin}" && ${cm}`
   let time = ''
   try {
-    time = await execSync(cm, { encoding: 'utf-8' })
+    time = (await execAsync(cm)).stdout
     time = trim(time)
   } catch (error) {
     logger.error(error.toString())
@@ -225,15 +224,15 @@ export class Update extends Application<'message'> {
     Store.uping = true
 
     //
-    const ret = await execSync(cm)
+    const ret = await execAsync(cm)
 
     //
     Store.uping = false
 
     //
-    if (ret.error) {
+    if (ret.stderr) {
       logger.mark(`${this.e.logFnc} 更新失败：${typeName}`)
-      this.gitErr(ret.error, ret.stdout)
+      this.gitErr(ret.stderr, ret.stdout)
       return false
     }
 
@@ -244,7 +243,7 @@ export class Update extends Application<'message'> {
     } else {
       await this.e.reply(`${typeName} 更新成功\n更新时间：${time}`)
       isUp = true
-      const msg = await this.getLog(plugin)
+      const msg = await getLog(plugin)
       if (msg) await this.e.reply(msg)
     }
 

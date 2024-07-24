@@ -7,7 +7,9 @@ import { existsSync } from 'fs'
 import { Store } from '../model/store'
 import { isPortTaken } from '../model/model'
 const require = createRequire(import.meta.url)
-
+/**
+ * 重启 ｜ 停机 ｜ 关机
+ */
 export class Restart extends Application<'message'> {
   constructor() {
     // 消息
