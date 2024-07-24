@@ -4,19 +4,23 @@ import typescript from '@rollup/plugin-typescript'
  */
 export default [
   {
+    // src 目录
     input: './src/index.ts',
     output: {
-      file: 'index.js',
+      // lib 目录
+      dir: 'lib',
       format: 'es',
-      sourcemap: false
+      sourcemap: false,
+      // 保持结构
+      preserveModules: true
     },
     plugins: [
       typescript({
-        "compilerOptions": {
-          "declaration": true,
-          "declarationDir": "types"
+        compilerOptions: {
+          declaration: true,
+          declarationDir: 'lib/types'
         },
-        "include": ["src/**/*"],
+        include: ['src/**/*']
       })
     ],
     onwarn: (warning, warn) => {

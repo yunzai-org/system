@@ -268,7 +268,7 @@ export class Update extends Plugin {
   }
 
   /**
-   * 
+   *
    */
   restart = () => {
     const con = new Restart()

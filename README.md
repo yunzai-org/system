@@ -2,21 +2,9 @@
 
 提供一些必要的，对机器人进行管理的功能。
 
-> Yunzai最低版本4.1
-
-> 若使用4.0版本请翻看4.0分支
-
 ## 使用教程
 
 - install
-
-> 请确保已经安装yunzaijs
-
-```sh
-yarn add yunzai -W
-```
-
-> 添加system应用
 
 ```sh
 # yarn
@@ -39,6 +27,27 @@ export default {
 yarn remove yz-system
 # add
 yarn add yz-system@latest -W
+```
+
+## 开发
+
+```sh
+git clone git@github.com:yunzai-org/system.git
+cd system
+```
+
+```sh
+git clone https://github.com/yunzai-org/system.git
+cd system
+```
+
+```sh
+npm install yarn@1.19.1 -g
+yarn
+```
+
+```sh
+yarn app
 ```
 
 ## 功能列表
