@@ -1,20 +1,142 @@
-import { Plugin, makeForwardMsg } from 'yunzai'
+import { Application, makeForwardMsg } from 'yunzai'
 import { trim } from 'lodash-es'
 import { existsSync, readdirSync } from 'node:fs'
 import { BOT_NAME, PLUGINS_PATH } from 'yunzai'
-import { exec, execSync } from 'child_process'
+import { execSync } from 'child_process'
 import { Restart } from './restart.js'
 import { sleep } from 'yunzai'
-import { Store } from '../store.js'
-export class Update extends Plugin {
-  typeName = BOT_NAME
-  messages = []
-  isUp = null
-  isNowUp = null
-  oldCommitId = null
+import { Store } from '../model/store.js'
+
+let typeName = BOT_NAME
+let messages = []
+let isUp = null
+let isNowUp = null
+let oldCommitId = null
+
+/**
+ *
+ * @param plugin
+ * @returns
+ */
+function getPlugin(name = '') {
+  if (!name || name == '') {
+    // 没有设置  - 就捕获指令上的
+    name = this.e.msg.replace(/#(强制)?更新(日志)?/, '')
+    // 不存在
+    if (!name || name == '') return ''
+  }
+  // 指定插件不存在
+  if (!existsSync(`plugins/${name}/.git`)) return false
+  typeName = name
+  // 存在则返回
+  return name
+}
+
+/**
+ *
+ * @param name
+ * @returns
+ */
+async function getcommitId(name = '') {
+  //
+  let cm = 'git rev-parse --short HEAD'
+  //
+  if (name) cm = `cd "plugins/${name}" && ${cm}`
+  const commitId = await execSync(cm, { encoding: 'utf-8' })
+  return trim(commitId)
+}
+
+/**
+ *
+ * @param name
+ * @returns
+ */
+async function getLog(name = '') {
+  let cm = 'git log -100 --pretty="%h||[%cd] %s" --date=format:"%F %T"'
+  if (name) cm = `cd "plugins/${name}" && ${cm}`
+
+  // 所有记录
+  let logAll: string | null = null
+
+  //
+  try {
+    logAll = await execSync(cm, { encoding: 'utf-8' })
+  } catch (error) {
+    // 不错啦
+    logger.error(error.toString())
+    // await this.e.reply(error.toString())
+  }
+
+  // 记录不存在
+  if (!logAll) return false
+
+  const logArray = logAll.trim().split('\n')
+
+  const log = []
+  for (let str of logArray) {
+    const strArr = str.split('||')
+    if (strArr[0] == oldCommitId) break
+    if (strArr[1].includes('Merge branch')) continue
+    log.push(strArr[1])
+  }
+
+  const length = log.length
+
+  const logStr = log.join('\n\n')
+
+  if (logStr.length <= 0) return ''
+
+  let end = ''
+
+  try {
+    cm = 'git config -l'
+    if (name) cm = `cd "plugins/${name}" && ${cm}`
+    end = await execSync(cm, { encoding: 'utf-8' })
+    end = end
+      .match(/remote\..*\.url=.+/g)
+      .join('\n\n')
+      .replace(/remote\..*\.url=/g, '')
+      .replace(/\/\/([^@]+)@/, '//')
+    //
+  } catch (error) {
+    //
+    logger.error(error.toString())
+    await this.e.reply(error.toString())
+  }
+
+  /**
+   * tudo
+   * 合成转发
+   */
+  return makeForwardMsg(
+    this.e,
+    [logStr, end],
+    `${name || BOT_NAME} 更新日志，共${length}条`
+  )
+}
+
+/**
+ *
+ * @param plugin
+ * @returns
+ */
+async function getTime(plugin = '') {
+  let cm = 'git log -1 --pretty=%cd --date=format:"%F %T"'
+  if (plugin) cm = `cd "plugins/${plugin}" && ${cm}`
+  let time = ''
+  try {
+    time = await execSync(cm, { encoding: 'utf-8' })
+    time = trim(time)
+  } catch (error) {
+    logger.error(error.toString())
+    time = '获取时间失败'
+  }
+  return time
+}
+
+export class Update extends Application<'message'> {
   constructor() {
-    super()
-    this.priority = 4000
+    super('message')
     this.rule = [
       {
         reg: /^#更新日志/,
@@ -33,7 +155,7 @@ export class Update extends Plugin {
   }
 
   /**
-   *
+   * 更新
    * @returns
    */
   async update() {
@@ -47,7 +169,7 @@ export class Update extends Plugin {
     if (/详细|详情|面板|面版/.test(this.e.msg)) return false
 
     // 获取插件
-    const name = this.getPlugin()
+    const name = getPlugin()
 
     // false 错误
     if (name === false) return false
@@ -62,7 +184,7 @@ export class Update extends Plugin {
     }
 
     //是否需要重启
-    if (this.isUp) {
+    if (isUp) {
       setTimeout(() => {
         this.restart()
       }, 2000)
@@ -70,45 +192,12 @@ export class Update extends Plugin {
   }
 
   /**
-   *
-   * @param plugin
-   * @returns
-   */
-  getPlugin(name = '') {
-    if (!name || name == '') {
-      // 没有设置  - 就捕获指令上的
-      name = this.e.msg.replace(/#(强制)?更新(日志)?/, '')
-      // 不存在
-      if (!name || name == '') return ''
-    }
-    // 指定插件不存在
-    if (!existsSync(`plugins/${name}/.git`)) return false
-    this.typeName = name
-    // 存在则返回
-    return name
-  }
-
-  /**
-   *
-   * @param cmd
-   * @returns
-   */
-  async execSync(cmd: string): Promise<{ error; stdout; stderr }> {
-    return new Promise(resolve => {
-      exec(cmd, { windowsHide: true }, (error, stdout, stderr) => {
-        resolve({ error, stdout, stderr })
-      })
-    })
-  }
-
-  /**
-   *
+   * 运行更新
    * @param plugin
    * @returns
    */
   async runUpdate(plugin = '') {
-    //
-    this.isNowUp = false
+    isNowUp = false
 
     let cm = 'git pull --no-rebase'
 
@@ -125,36 +214,36 @@ export class Update extends Plugin {
     //
     if (plugin) cm = `cd "plugins/${plugin}" && ${cm}`
 
-    this.oldCommitId = await this.getcommitId(plugin)
+    oldCommitId = await getcommitId(plugin)
 
     //
-    logger.mark(`${this.e.logFnc} 开始${type}：${this.typeName}`)
+    logger.mark(`${this.e.logFnc} 开始${type}：${typeName}`)
 
-    await this.e.reply(`开始${type} ${this.typeName}`)
+    await this.e.reply(`开始${type} ${typeName}`)
 
     //
     Store.uping = true
 
     //
-    const ret = await this.execSync(cm)
+    const ret = await execSync(cm)
 
     //
     Store.uping = false
 
     //
     if (ret.error) {
-      logger.mark(`${this.e.logFnc} 更新失败：${this.typeName}`)
+      logger.mark(`${this.e.logFnc} 更新失败：${typeName}`)
       this.gitErr(ret.error, ret.stdout)
       return false
     }
 
-    const time = await this.getTime(plugin)
+    const time = await getTime(plugin)
 
     if (/Already up|已经是最新/g.test(ret.stdout)) {
-      await this.e.reply(`${this.typeName} 已是最新\n最后更新时间：${time}`)
+      await this.e.reply(`${typeName} 已是最新\n最后更新时间：${time}`)
     } else {
-      await this.e.reply(`${this.typeName} 更新成功\n更新时间：${time}`)
-      this.isUp = true
+      await this.e.reply(`${typeName} 更新成功\n更新时间：${time}`)
+      isUp = true
       const msg = await this.getLog(plugin)
       if (msg) await this.e.reply(msg)
     }
@@ -164,42 +253,7 @@ export class Update extends Plugin {
   }
 
   /**
-   *
-   * @param name
-   * @returns
-   */
-  async getcommitId(name = '') {
-    //
-    let cm = 'git rev-parse --short HEAD'
-    //
-    if (name) cm = `cd "plugins/${name}" && ${cm}`
-    const commitId = await execSync(cm, { encoding: 'utf-8' })
-    return trim(commitId)
-  }
-
-  /**
-   *
-   * @param plugin
-   * @returns
-   */
-  async getTime(plugin = '') {
-    let cm = 'git log -1 --pretty=%cd --date=format:"%F %T"'
-    if (plugin) cm = `cd "plugins/${plugin}" && ${cm}`
-
-    let time = ''
-    try {
-      time = await execSync(cm, { encoding: 'utf-8' })
-      time = trim(time)
-    } catch (error) {
-      logger.error(error.toString())
-      time = '获取时间失败'
-    }
-
-    return time
-  }
-
-  /**
-   *
+   * git 错误
    * @param err
    * @param stdout
    * @returns
@@ -235,7 +289,7 @@ export class Update extends Plugin {
   }
 
   /**
-   *
+   * 更新所有插件
    */
   async updateAll() {
     // 得到目录下的所有插件
@@ -251,16 +305,16 @@ export class Update extends Plugin {
     //
     for (const plu of dirs) {
       // 得到
-      const Plu = this.getPlugin(plu)
+      const Plu = getPlugin(plu)
       if (Plu === false) continue
       await sleep(1500)
       await this.runUpdate(Plu)
     }
     if (testReg) {
-      const msg = await makeForwardMsg(this.e, this.messages)
-      this.messages.push(msg)
+      const msg = await makeForwardMsg(this.e, messages)
+      messages.push(msg)
     }
-    if (this.isUp) {
+    if (isUp) {
       setTimeout(() => {
         this.restart()
       }, 2000)
@@ -268,7 +322,7 @@ export class Update extends Plugin {
   }
 
   /**
-   *
+   * 重启
    */
   restart = () => {
     const con = new Restart()
@@ -277,82 +331,14 @@ export class Update extends Plugin {
   }
 
   /**
-   *
-   * @param name
-   * @returns
-   */
-  async getLog(name = '') {
-    let cm = 'git log -100 --pretty="%h||[%cd] %s" --date=format:"%F %T"'
-    if (name) cm = `cd "plugins/${name}" && ${cm}`
-
-    // 所有记录
-    let logAll: string | null = null
-
-    //
-    try {
-      logAll = await execSync(cm, { encoding: 'utf-8' })
-    } catch (error) {
-      // 不错啦
-      logger.error(error.toString())
-      await this.e.reply(error.toString())
-    }
-
-    // 记录不存在
-    if (!logAll) return false
-
-    const logArray = logAll.trim().split('\n')
-
-    const log = []
-    for (let str of logArray) {
-      const strArr = str.split('||')
-      if (strArr[0] == this.oldCommitId) break
-      if (strArr[1].includes('Merge branch')) continue
-      log.push(strArr[1])
-    }
-
-    const length = log.length
-
-    const logStr = log.join('\n\n')
-
-    if (logStr.length <= 0) return ''
-
-    let end = ''
-
-    try {
-      cm = 'git config -l'
-      if (name) cm = `cd "plugins/${name}" && ${cm}`
-      end = await execSync(cm, { encoding: 'utf-8' })
-      end = end
-        .match(/remote\..*\.url=.+/g)
-        .join('\n\n')
-        .replace(/remote\..*\.url=/g, '')
-        .replace(/\/\/([^@]+)@/, '//')
-      //
-    } catch (error) {
-      //
-      logger.error(error.toString())
-      await this.e.reply(error.toString())
-    }
-
-    /**
-     * 合成转发
-     */
-    return makeForwardMsg(
-      this.e,
-      [logStr, end],
-      `${name || BOT_NAME} 更新日志，共${length}条`
-    )
-  }
-
-  /**
-   *
+   * 更新记录
    * @returns
    */
   async updateLog() {
-    const name = this.getPlugin()
+    const name = getPlugin()
     if (name === false) return false
     // 得到指令插件的记录
-    const msg = await this.getLog(name)
+    const msg = await getLog(name)
     // 记录错误
     if (msg) {
       this.e.reply(msg)

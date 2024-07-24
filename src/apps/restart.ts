@@ -1,16 +1,17 @@
 import fetch from 'node-fetch'
 import { exec } from 'child_process'
-import { Plugin } from 'yunzai'
+import { Application } from 'yunzai'
 import { join } from 'path'
 import { createRequire } from 'module'
 import { existsSync } from 'fs'
-import { Store } from '../store'
-import { isPortTaken } from '../model'
+import { Store } from '../model/store'
+import { isPortTaken } from '../model/model'
 const require = createRequire(import.meta.url)
-export class Restart extends Plugin {
+
+export class Restart extends Application<'message'> {
   constructor() {
-    super()
-    this.priority = 10
+    // 消息
+    super('message')
     this.rule = [
       {
         reg: /^#重启$/,
@@ -23,33 +24,6 @@ export class Restart extends Plugin {
         permission: 'master'
       }
     ]
-  }
-
-  /**
-   *
-   */
-  async init() {
-    const data = await redis.get(Store.RESTART_KEY)
-    if (data) {
-      const restart = JSON.parse(data)
-      const uin = restart?.uin || Bot.uin
-      let time = restart.time || new Date().getTime()
-      time = (new Date().getTime() - time) / 1000
-      let msg = `重启成功：耗时${time.toFixed(2)}秒`
-      try {
-        if (restart.isGroup) {
-          Bot[uin].pickGroup(restart.id).sendMsg(msg)
-        } else {
-          Bot[uin].pickUser(restart.id).sendMsg(msg)
-        }
-      } catch (error) {
-        /** 不发了，发不出去... */
-        logger.debug(error)
-      }
-      redis.del(Store.RESTART_KEY)
-    }
-
-    // 如果 return 'return' 则跳过解析
   }
 
   /**
@@ -77,7 +51,6 @@ export class Restart extends Plugin {
       id: this.e.isGroup ? this.e.group_id : this.e.user_id,
       time: new Date().getTime()
     })
-    const npm = await this.checkPnpm()
     await redis.set(Store.RESTART_KEY, data, { EX: 120 })
 
     /**
@@ -102,15 +75,15 @@ export class Restart extends Plugin {
        *
        */
       try {
-        exec(`${npm} run start`, { windowsHide: true }, (error, stdout, _) => {
+        exec(`npm run start`, { windowsHide: true }, (error, stdout, _) => {
           if (error) {
             redis.del(Store.RESTART_KEY)
             this.e.reply(`操作失败！\n${error.stack}`)
             logger.error(`重启失败\n${error.stack}`)
           } else if (stdout) {
             logger.mark('重启成功，运行已由前台转为后台')
-            logger.mark(`查看日志请用命令：${npm} run logs`)
-            logger.mark(`停止后台运行命令：${npm} run stop`)
+            logger.mark(`查看日志请用命令：npm run logs`)
+            logger.mark(`停止后台运行命令：npm run stop`)
             process.exit()
           }
         })
@@ -121,27 +94,6 @@ export class Restart extends Plugin {
     }
 
     return true
-  }
-
-  /**
-   *
-   * @returns
-   */
-  async checkPnpm() {
-    return 'npm'
-  }
-
-  /**
-   *
-   * @param cmd
-   * @returns
-   */
-  async execSync(cmd) {
-    return new Promise(resolve => {
-      exec(cmd, { windowsHide: true }, (error, stdout, stderr) => {
-        resolve({ error, stdout, stderr })
-      })
-    })
   }
 
   /**
@@ -176,8 +128,7 @@ export class Restart extends Plugin {
     }
     logger.mark('关机成功，已停止运行')
     await this.e.reply('关机成功，已停止运行')
-    const npm = await this.checkPnpm()
-    exec(`${npm} run stop`, { windowsHide: true }, error => {
+    exec(`npm run stop`, { windowsHide: true }, error => {
       if (error) {
         this.e.reply(`操作失败！\n${error.stack}`)
         logger.error(`关机失败\n${error.stack}`)

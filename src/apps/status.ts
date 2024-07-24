@@ -1,78 +1,23 @@
-import { ConfigController as cfg } from 'yunzai'
+import { Application, ConfigController as cfg } from 'yunzai'
 import moment from 'moment'
-import { Plugin } from 'yunzai'
-export class Status extends Plugin {
-  /**
-      name: '其他功能',
-      dsc: '#状态',
-   */
-  constructor() {
-    super()
-    this.rule = [
-      {
-        reg: /^#状态$/,
-        fnc: this.status.name
-      }
-    ]
-  }
 
-  /**
-   *
-   * @returns
-   */
-  async status() {
-    if (this.e.isMaster) return this.statusMaster()
-    if (!this.e.isGroup) {
-      this.e.reply('请群聊查看')
-      return
-    }
-    return this.statusGroup()
-  }
-
-  /**
-   *
-   */
-  async statusMaster() {
-    let runTime = moment().diff(
-      moment.unix(this.e.bot.stat.start_time),
-      'seconds'
-    )
-    let Day = Math.floor(runTime / 3600 / 24)
-    let Hour = Math.floor((runTime / 3600) % 24)
-    let Min = Math.floor((runTime / 60) % 60)
-    let data = ''
-    if (Day > 0) {
-      data = `${Day}天${Hour}小时${Min}分钟`
-    } else {
-      data = `${Hour}小时${Min}分钟`
-    }
-    let format = bytes => {
-      return (bytes / 1024 / 1024).toFixed(2) + 'MB'
-    }
-    let msg = '-------状态-------'
-    msg += `\n运行时间：${data}`
-    msg += `\n内存使用：${format(process.memoryUsage().rss)}`
-    msg += `\n当前版本：v${cfg.package.version}`
-    msg += '\n-------累计-------'
-    msg += await this.getCount()
-    await this.e.reply(msg)
-  }
-
-  /**
-   *
-   */
-  async statusGroup() {
-    let msg = '-------状态-------'
-    msg += await this.getCount(this.e.group_id)
-    await this.e.reply(msg)
-  }
-
+class Count {
+  //
   date = null
+  //
   month = null
+  //
   key = null
+  //
   msgKey = null
+  //
   screenshotKey = null
 
+  /**
+   *
+   * @param groupId
+   * @returns
+   */
   async getCount(groupId: number | string = '') {
     this.date = moment().format('MMDD')
     this.month = Number(moment().month()) + 1
@@ -134,5 +79,69 @@ export class Status extends Plugin {
       msg += `\n生成图片：${count.month.screenshot}次`
     }
     return msg
+  }
+}
+
+export class Status extends Application<'message'> {
+  constructor() {
+    super('message')
+    this.rule = [
+      {
+        reg: /^#状态$/,
+        fnc: this.status.name
+      }
+    ]
+  }
+
+  /**
+   * 状态
+   * @returns
+   */
+  async status() {
+    if (!this.e.isGroup) {
+      this.e.reply('请群聊查看')
+      return
+    }
+    if (this.e.isMaster) return await this.statusMaster()
+    return await this.statusGroup()
+  }
+
+  /**
+   *
+   */
+  async statusMaster() {
+    let runTime = moment().diff(
+      moment.unix(this.e.bot.stat.start_time),
+      'seconds'
+    )
+    let Day = Math.floor(runTime / 3600 / 24)
+    let Hour = Math.floor((runTime / 3600) % 24)
+    let Min = Math.floor((runTime / 60) % 60)
+    let data = ''
+    if (Day > 0) {
+      data = `${Day}天${Hour}小时${Min}分钟`
+    } else {
+      data = `${Hour}小时${Min}分钟`
+    }
+    let format = bytes => {
+      return (bytes / 1024 / 1024).toFixed(2) + 'MB'
+    }
+    const CON = new Count()
+    let msg = '-------状态-------'
+    msg += `\n运行时间：${data}`
+    msg += `\n内存使用：${format(process.memoryUsage().rss)}`
+    msg += `\n当前版本：v${cfg.package.version}`
+    msg += '\n-------累计-------'
+    msg += await CON.getCount()
+    await this.e.reply(msg)
+  }
+
+  /**
+   *
+   */
+  async statusGroup() {
+    const CON = new Count()
+    const msg = await CON.getCount(this.e.group_id)
+    await this.e.reply(`-------状态-------${msg}`)
   }
 }
