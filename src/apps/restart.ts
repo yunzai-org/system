@@ -1,11 +1,9 @@
-import fetch from 'node-fetch'
 import { exec } from 'child_process'
 import { Application } from 'yunzai'
 import { join } from 'path'
 import { createRequire } from 'module'
 import { existsSync } from 'fs'
 import { Store } from '../model/store'
-import { isPortTaken } from '../model/model'
 const require = createRequire(import.meta.url)
 /**
  * 重启 ｜ 停机 ｜ 关机
@@ -44,57 +42,47 @@ export class Restart extends Application<'message'> {
     const restart_port = cfg?.restart_port || 27881
     await this.e.reply('开始执行重启，请稍等...')
     logger.mark(`${this.e.logFnc} 开始执行重启，请稍等...`)
-    /**
-     *
-     */
-    const data = JSON.stringify({
-      uin: this.e?.self_id || this.e.bot.uin,
-      isGroup: !!this.e.isGroup,
-      id: this.e.isGroup ? this.e.group_id : this.e.user_id,
-      time: new Date().getTime()
-    })
-    await redis.set(Store.RESTART_KEY, data, { EX: 120 })
+    // 写入数据
+    await redis.set(
+      Store.RESTART_KEY,
+      JSON.stringify({
+        uin: this.e?.self_id || this.e.bot.uin,
+        isGroup: !!this.e.isGroup,
+        id: this.e.isGroup ? this.e.group_id : this.e.user_id,
+        time: new Date().getTime()
+      }),
+      { EX: 120 }
+    )
 
     /**
-     *
+     * tudo
+     * 需要修改成pm2通讯
+     * 而不是使用 npm指令
      */
-    if (await isPortTaken(restart_port)) {
-      try {
-        const result = await fetch(
-          `http://localhost:${restart_port}/restart`
-        ).then(res => res.text())
-        if (result !== `OK`) {
+
+    // 确保使用最基本的 npm 环境
+    try {
+      exec(`npm run start`, { windowsHide: true }, (error, stdout, _) => {
+        if (error) {
+          // 失败了，清理  key
           redis.del(Store.RESTART_KEY)
-          this.e.reply(`操作失败！`)
-          logger.error(`重启失败`)
+          this.e.reply(`操作失败！\n${error.stack}`)
+          logger.error(`重启失败\n${error.stack}`)
+        } else if (stdout) {
+          logger.mark('重启成功，运行已由前台转为后台')
+          logger.mark(`查看日志请用命令：npm run logs`)
+          logger.mark(`停止后台运行命令：npm run stop`)
+          // 启动了新的
+          // 要关闭当前的
+          process.exit()
         }
-      } catch (error) {
-        redis.del(Store.RESTART_KEY)
-        this.e.reply(`操作失败！\n${error}`)
-      }
-    } else {
-      /**
-       *
-       */
-      try {
-        exec(`npm run start`, { windowsHide: true }, (error, stdout, _) => {
-          if (error) {
-            redis.del(Store.RESTART_KEY)
-            this.e.reply(`操作失败！\n${error.stack}`)
-            logger.error(`重启失败\n${error.stack}`)
-          } else if (stdout) {
-            logger.mark('重启成功，运行已由前台转为后台')
-            logger.mark(`查看日志请用命令：npm run logs`)
-            logger.mark(`停止后台运行命令：npm run stop`)
-            process.exit()
-          }
-        })
-      } catch (error) {
-        redis.del(Store.RESTART_KEY)
-        this.e.reply(`操作失败！\n${error.stack ?? error}`)
-      }
+      })
+    } catch (error) {
+      // 失败了，清理  key
+      redis.del(Store.RESTART_KEY)
+      // 发送失败信息
+      this.e.reply(`操作失败！\n${error.stack ?? error}`)
     }
-
     return true
   }
 
@@ -110,19 +98,9 @@ export class Restart extends Application<'message'> {
       this.e.reply('pm2 配置丢失')
       return
     }
-    const cfg = require(dir)
-    const restart_port = cfg?.restart_port || 27881
-    if (await isPortTaken(restart_port)) {
-      try {
-        logger.mark('关机成功，已停止运行')
-        await this.e.reply(`关机成功，已停止运行`)
-        await fetch(`http://localhost:${restart_port}/exit`)
-        return
-      } catch (error) {
-        this.e.reply(`操作失败！\n${error}`)
-        logger.error(`关机失败\n${error}`)
-      }
-    }
+    // tudo
+    // 关机 即 停止运行
+    // 可以设定 关机 ｜ 关机xxxx小时 ｜ 关机到xxx时间
     if (!process.argv[1].includes('pm2')) {
       logger.mark('关机成功，已停止运行')
       await this.e.reply('关机成功，已停止运行')
