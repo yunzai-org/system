@@ -6,4 +6,5 @@ export type Options = {
    * 重启数据key
    */
   reStartKey?: string
+  pm2ConfigDir?: string
 }

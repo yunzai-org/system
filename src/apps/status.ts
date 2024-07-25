@@ -12,7 +12,6 @@ class Count {
   msgKey = null
   //
   screenshotKey = null
-
   /**
    *
    * @param groupId
@@ -38,7 +37,7 @@ class Count {
       screenshot: 0
     }
     for (let i = 0; i <= 6; i++) {
-      let date = moment().startOf('week').add(i, 'days').format('MMDD')
+      const date = moment().startOf('week').add(i, 'days').format('MMDD')
       week.msg += Number(await redis.get(`${this.msgKey.day}${date}`)) ?? 0
       week.screenshot +=
         Number(await redis.get(`${this.screenshotKey.day}${date}`)) ?? 0
@@ -87,7 +86,7 @@ export class Status extends Application<'message'> {
     super('message')
     this.rule = [
       {
-        reg: /^#状态$/,
+        reg: /^(#|\/)状态$/,
         fnc: this.status.name
       }
     ]
@@ -98,11 +97,13 @@ export class Status extends Application<'message'> {
    * @returns
    */
   async status() {
+    // 是主人
+    if (this.e.isMaster) return await this.statusMaster()
+    // 不是主人，不能在私聊中查看
     if (!this.e.isGroup) {
       this.e.reply('请群聊查看')
       return
     }
-    if (this.e.isMaster) return await this.statusMaster()
     return await this.statusGroup()
   }
 
@@ -110,20 +111,20 @@ export class Status extends Application<'message'> {
    *
    */
   async statusMaster() {
-    let runTime = moment().diff(
+    const runTime = moment().diff(
       moment.unix(this.e.bot.stat.start_time),
       'seconds'
     )
-    let Day = Math.floor(runTime / 3600 / 24)
-    let Hour = Math.floor((runTime / 3600) % 24)
-    let Min = Math.floor((runTime / 60) % 60)
+    const Day = Math.floor(runTime / 3600 / 24)
+    const Hour = Math.floor((runTime / 3600) % 24)
+    const Min = Math.floor((runTime / 60) % 60)
     let data = ''
     if (Day > 0) {
       data = `${Day}天${Hour}小时${Min}分钟`
     } else {
       data = `${Hour}小时${Min}分钟`
     }
-    let format = bytes => {
+    const format = bytes => {
       return (bytes / 1024 / 1024).toFixed(2) + 'MB'
     }
     const CON = new Count()

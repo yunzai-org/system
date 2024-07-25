@@ -3,7 +3,8 @@
  */
 class StoreCore {
   RESTART_KEY = 'Yz:restart'
-  uping = false
+  RESTART_ACTION_KEY = 'Yz:restart:action'
+  PM2_CONFIG_DIR = 'pm2.config.cjs'
 }
 /**
  * 变量存储器

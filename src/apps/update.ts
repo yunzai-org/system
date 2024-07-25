@@ -4,23 +4,23 @@ import { existsSync, readdirSync } from 'node:fs'
 import { BOT_NAME, PLUGINS_PATH } from 'yunzai'
 import { Restart } from './restart.js'
 import { sleep } from 'yunzai'
-import { Store } from '../model/store.js'
 
 let typeName = BOT_NAME
 let messages = []
 let isUp = null
-let isNowUp = null
 let oldCommitId = null
 
+let lock = false
+
 /**
- *
+ * 得到插件
  * @param plugin
  * @returns
  */
-function getPlugin(name = '') {
+function getPlugin(name = '', msg: string) {
   if (!name || name == '') {
     // 没有设置  - 就捕获指令上的
-    name = this.e.msg.replace(/#(强制)?更新(日志)?/, '')
+    name = msg.replace(/#(强制)?更新(日志)?/, '')
     // 不存在
     if (!name || name == '') return ''
   }
@@ -43,75 +43,6 @@ async function getcommitId(name = '') {
   if (name) cm = `cd "plugins/${name}" && ${cm}`
   const commitId = await execAsync(cm)
   return trim(commitId?.stderr ?? commitId.stdout)
-}
-
-/**
- *
- * @param name
- * @returns
- */
-async function getLog(name = '') {
-  let cm = 'git log -100 --pretty="%h||[%cd] %s" --date=format:"%F %T"'
-  if (name) cm = `cd "plugins/${name}" && ${cm}`
-
-  // 所有记录
-  let logAll: string | null = null
-
-  //
-  try {
-    logAll = (await execAsync(cm)).stdout
-  } catch (error) {
-    // 不错啦
-    logger.error(error.toString())
-    // await this.e.reply(error.toString())
-  }
-
-  // 记录不存在
-  if (!logAll) return false
-
-  const logArray = logAll.trim().split('\n')
-
-  const log = []
-  for (let str of logArray) {
-    const strArr = str.split('||')
-    if (strArr[0] == oldCommitId) break
-    if (strArr[1].includes('Merge branch')) continue
-    log.push(strArr[1])
-  }
-
-  const length = log.length
-
-  const logStr = log.join('\n\n')
-
-  if (logStr.length <= 0) return ''
-
-  let end = ''
-
-  try {
-    cm = 'git config -l'
-    if (name) cm = `cd "plugins/${name}" && ${cm}`
-    end = (await execAsync(cm)).stdout
-    end = end
-      .match(/remote\..*\.url=.+/g)
-      .join('\n\n')
-      .replace(/remote\..*\.url=/g, '')
-      .replace(/\/\/([^@]+)@/, '//')
-    //
-  } catch (error) {
-    //
-    logger.error(error.toString())
-    await this.e.reply(error.toString())
-  }
-
-  /**
-   * tudo
-   * 合成转发
-   */
-  return makeForwardMsg(
-    this.e,
-    [logStr, end],
-    `${name || BOT_NAME} 更新日志，共${length}条`
-  )
 }
 
 /**
@@ -159,19 +90,25 @@ export class Update extends Application<'message'> {
    */
   async update() {
     // 不是主人
-    if (!this.e.isMaster) return false
-    if (Store.uping) {
+    if (!this.e.isMaster) {
+      return
+    }
+    if (lock) {
       this.e.reply('正在更新中..请勿重复操作')
-      return false
+      return
     }
     // 其他指令重合反弹
-    if (/详细|详情|面板|面版/.test(this.e.msg)) return false
+    if (/详细|详情|面板|面版/.test(this.e.msg)) {
+      return
+    }
 
     // 获取插件
-    const name = getPlugin()
+    const name = getPlugin('', this.e.msg)
 
     // false 错误
-    if (name === false) return false
+    if (name === false) {
+      return
+    }
 
     // 空的，全部更新
     if (name === '') {
@@ -196,19 +133,11 @@ export class Update extends Application<'message'> {
    * @returns
    */
   async runUpdate(plugin = '') {
-    isNowUp = false
-
     let cm = 'git pull --no-rebase'
-
     let type = '更新'
-
-    //
     if (this.e.msg.includes('强制')) {
-      //
       type = '强制更新'
       cm = `git reset --hard && git pull --rebase --allow-unrelated-histories`
-
-      //
     }
     //
     if (plugin) cm = `cd "plugins/${plugin}" && ${cm}`
@@ -221,34 +150,34 @@ export class Update extends Application<'message'> {
     await this.e.reply(`开始${type} ${typeName}`)
 
     //
-    Store.uping = true
+    lock = true
 
     //
     const ret = await execAsync(cm)
 
     //
-    Store.uping = false
+    lock = false
 
     //
     if (ret.stderr) {
       logger.mark(`${this.e.logFnc} 更新失败：${typeName}`)
       this.gitErr(ret.stderr, ret.stdout)
-      return false
+      return
     }
 
     const time = await getTime(plugin)
+
+    logger.mark(`${this.e.logFnc} 最后更新时间：${time}`)
 
     if (/Already up|已经是最新/g.test(ret.stdout)) {
       await this.e.reply(`${typeName} 已是最新\n最后更新时间：${time}`)
     } else {
       await this.e.reply(`${typeName} 更新成功\n更新时间：${time}`)
       isUp = true
-      const msg = await getLog(plugin)
-      if (msg) await this.e.reply(msg)
+      this.sendLog(plugin)
     }
 
-    logger.mark(`${this.e.logFnc} 最后更新时间：${time}`)
-    return true
+    return
   }
 
   /**
@@ -304,7 +233,7 @@ export class Update extends Application<'message'> {
     //
     for (const plu of dirs) {
       // 得到
-      const Plu = getPlugin(plu)
+      const Plu = getPlugin(plu, this.e.msg)
       if (Plu === false) continue
       await sleep(1500)
       await this.runUpdate(Plu)
@@ -324,9 +253,7 @@ export class Update extends Application<'message'> {
    * 重启
    */
   restart = () => {
-    const con = new Restart()
-    con.e = this.e
-    con.restart()
+    new Restart(this.e).restart()
   }
 
   /**
@@ -334,16 +261,78 @@ export class Update extends Application<'message'> {
    * @returns
    */
   async updateLog() {
-    const name = getPlugin()
-    if (name === false) return false
-    // 得到指令插件的记录
-    const msg = await getLog(name)
-    // 记录错误
+    const name = getPlugin('', this.e.msg)
+    if (name === false) {
+      return
+    }
+    this.sendLog(name)
+    return
+  }
+
+  /**
+   * 发送指定插件的更新记录
+   * @param name
+   * @returns
+   */
+  async sendLog(name: string) {
+    let cm = 'git log -100 --pretty="%h||[%cd] %s" --date=format:"%F %T"'
+    if (name) cm = `cd "plugins/${name}" && ${cm}`
+    // 所有记录
+    let logAll: string | null = null
+    try {
+      logAll = (await execAsync(cm)).stdout
+    } catch (error) {
+      // 不错啦
+      logger.error(error.toString())
+      // await this.e.reply(error.toString())
+    }
+    // 记录不存在
+    if (!logAll) {
+      this.e.reply('记录不存在')
+      return
+    }
+    const logArray = logAll.trim().split('\n')
+    const log = []
+    for (let str of logArray) {
+      const strArr = str.split('||')
+      if (strArr[0] == oldCommitId) break
+      if (strArr[1].includes('Merge branch')) continue
+      log.push(strArr[1])
+    }
+    const length = log.length
+    const logStr = log.join('\n\n')
+    if (logStr.length <= 0) {
+      this.e.reply('记录不存在')
+      return
+    }
+    let end = ''
+    try {
+      cm = 'git config -l'
+      if (name) cm = `cd "plugins/${name}" && ${cm}`
+      end = (await execAsync(cm)).stdout
+      end = end
+        .match(/remote\..*\.url=.+/g)
+        .join('\n\n')
+        .replace(/remote\..*\.url=/g, '')
+        .replace(/\/\/([^@]+)@/, '//')
+      //
+    } catch (error) {
+      //
+      logger.error(error.toString())
+    }
+
+    const msg = await makeForwardMsg(
+      this.e,
+      [logStr, end],
+      `${name || BOT_NAME} 更新日志，共${length}条`
+    )
+
     if (msg) {
       this.e.reply(msg)
     } else {
       this.e.reply('日志获取失败~')
     }
+
     return
   }
 }

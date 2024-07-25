@@ -1,12 +1,18 @@
 {
   "name": "yz-system",
-  "version": "1.0.0",
+  "version": "1.0.1-rc.0",
   "author": "ningmengchongshui",
   "description": "yz-system",
   "type": "module",
   "scripts": {
     "app": "node --no-warnings=ExperimentalWarning --loader ts-node/esm src/main.js",
     "dev": "nodemon",
+    "start": "pm2 startOrRestart pm2.config.cjs",
+    "stop": "pm2 stop pm2.config.cjs",
+    "delete": "pm2 delete pm2.config.cjs",
+    "kill": "pm2 kill",
+    "logs": "pm2 logs",
+    "monit": "pm2 monit",
     "img": "node --no-warnings=ExperimentalWarning --loader ts-node/esm src/server.ts",
     "build": "rollup  --config rollup.config.js",
     "format": "prettier --write ."
@@ -25,7 +31,7 @@
     "rollup": "^4.16.4",
     "ts-node": "^10.9.2",
     "typescript": "^5.4.5",
-    "yunzai": "^1.0.1-rc.1"
+    "yunzai": "^1.0.1-rc.2"
   },
   "files": [
     "lib"

@@ -1,17 +1,24 @@
-import { exec } from 'child_process'
-import { Application } from 'yunzai'
-import { join } from 'path'
-import { createRequire } from 'module'
-import { existsSync } from 'fs'
+import { Application, ConfigController } from 'yunzai'
 import { Store } from '../model/store'
-const require = createRequire(import.meta.url)
+import pm2 from 'pm2'
+
+// 执行锁
+let lock = false
+
+// 时间锁 5 秒 时间锁
+// 重启速度太快，icqq重复接收消息。
+const RESTART_TIME = 5 * 1000
+
 /**
  * 重启 ｜ 停机 ｜ 关机
  */
 export class Restart extends Application<'message'> {
-  constructor() {
+  constructor(e) {
     // 消息
     super('message')
+    // event
+    if (e) this.e = e
+    // rule
     this.rule = [
       {
         reg: /^#重启$/,
@@ -22,68 +29,117 @@ export class Restart extends Application<'message'> {
         reg: /^#(停机|关机)$/,
         fnc: this.stop.name,
         permission: 'master'
+      },
+      {
+        reg: /test/,
+        fnc: this.test.name
       }
     ]
   }
 
+  test() {
+    this.e.reply('1')
+  }
+
   /**
-   *
-   * @returns
+   * 重启方法
+   * @returns {Promise<void>}
    */
   async restart() {
-    // 开始询问是否有正在运行的同实例进程
-    const dir = join(process.cwd(), 'pm2.config.cjs')
-    if (!existsSync(dir)) {
-      // 不存在配置，错误
-      this.e.reply('pm2 配置丢失')
+    if (lock) {
+      this.e.reply('正在调控，请勿重复进行...')
       return
     }
-    const cfg = require(dir)
-    const restart_port = cfg?.restart_port || 27881
-    await this.e.reply('开始执行重启，请稍等...')
-    logger.mark(`${this.e.logFnc} 开始执行重启，请稍等...`)
-    // 写入数据
-    await redis.set(
-      Store.RESTART_KEY,
-      JSON.stringify({
-        uin: this.e?.self_id || this.e.bot.uin,
-        isGroup: !!this.e.isGroup,
-        id: this.e.isGroup ? this.e.group_id : this.e.user_id,
-        time: new Date().getTime()
-      }),
-      { EX: 120 }
-    )
 
     /**
-     * tudo
-     * 需要修改成pm2通讯
-     * 而不是使用 npm指令
+     * 时间锁
      */
+    const time = await redis.get(Store.RESTART_ACTION_KEY)
+    if (time && Number(time) + RESTART_TIME > Date.now()) return
+    await redis.set(Store.RESTART_ACTION_KEY, Date.now().toString())
 
-    // 确保使用最基本的 npm 环境
-    try {
-      exec(`npm run start`, { windowsHide: true }, (error, stdout, _) => {
-        if (error) {
-          // 失败了，清理  key
-          redis.del(Store.RESTART_KEY)
-          this.e.reply(`操作失败！\n${error.stack}`)
-          logger.error(`重启失败\n${error.stack}`)
-        } else if (stdout) {
-          logger.mark('重启成功，运行已由前台转为后台')
-          logger.mark(`查看日志请用命令：npm run logs`)
-          logger.mark(`停止后台运行命令：npm run stop`)
-          // 启动了新的
-          // 要关闭当前的
-          process.exit()
-        }
-      })
-    } catch (error) {
-      // 失败了，清理  key
+    // 执行锁
+    lock = true
+
+    //
+    const Error = (err: any, msg?: string) => {
+      lock = false
+      if (err) logger.error(err)
+      if (msg) {
+        logger.error(msg)
+        this.e.reply(msg)
+      }
+      pm2.disconnect()
+      // delete
       redis.del(Store.RESTART_KEY)
-      // 发送失败信息
-      this.e.reply(`操作失败！\n${error.stack ?? error}`)
     }
-    return true
+
+    // delete
+    redis.del(Store.RESTART_KEY)
+
+    //
+    const send = async () => {
+      await this.e.reply('开始重启...')
+      // set
+      await redis.set(
+        Store.RESTART_KEY,
+        JSON.stringify({
+          uin: this.e?.self_id || this.e.bot.uin,
+          isGroup: !!this.e.isGroup,
+          id: this.e.isGroup ? this.e.group_id : this.e.user_id,
+          time: new Date().getTime()
+        }),
+        { EX: 120 }
+      )
+    }
+
+    // config
+    const cfg = ConfigController.pm2
+
+    // 查看情况
+    pm2.connect(err => {
+      if (err) {
+        Error(err?.message, 'pm2出错')
+        return
+      }
+      // 得到列表
+      pm2.list(async (err, processList) => {
+        if (err) {
+          Error(err?.message, 'pm2 list 获取失败')
+          return
+        }
+        //
+        if (processList.length <= 0) {
+          Error(undefined, 'pm2 进程配置为空, 你从未有pm2进程记录,无法使用重启')
+          return
+        }
+        //
+        const app = processList.find(p => p.name === cfg.apps[0].name)
+        //
+        if (!app) {
+          Error(undefined, 'pm2 未匹配到进程配置，配置可能被修改了')
+          return
+        }
+        // 记录重启
+        await send()
+        // 尝试重启
+        pm2.restart(cfg.apps[0].name, async err => {
+          if (err) {
+            Error(err?.message, 'pm2 重启错误')
+          } else {
+            // 断开连接
+            pm2.disconnect()
+            //
+            lock = false
+            //
+            setTimeout(() => {
+              // 关闭当前
+              process.exit()
+            })
+          }
+        })
+      })
+    })
   }
 
   /**
@@ -91,28 +147,15 @@ export class Restart extends Application<'message'> {
    * @returns
    */
   async stop() {
-    // 开始询问是否有正在运行的同实例进程
-    const dir = join(process.cwd(), 'pm2.config.cjs')
-    if (!existsSync(dir)) {
-      // 不存在配置，错误
-      this.e.reply('pm2 配置丢失')
+    if (lock) {
+      this.e.reply('正在调控，请勿重复进行...')
       return
     }
-    // tudo
-    // 关机 即 停止运行
-    // 可以设定 关机 ｜ 关机xxxx小时 ｜ 关机到xxx时间
-    if (!process.argv[1].includes('pm2')) {
-      logger.mark('关机成功，已停止运行')
-      await this.e.reply('关机成功，已停止运行')
-      process.exit()
-    }
-    logger.mark('关机成功，已停止运行')
-    await this.e.reply('关机成功，已停止运行')
-    exec(`npm run stop`, { windowsHide: true }, error => {
-      if (error) {
-        this.e.reply(`操作失败！\n${error.stack}`)
-        logger.error(`关机失败\n${error.stack}`)
-      }
-    })
+    //
+    lock = true
+    //
+    await this.e.reply('准备杀死进程...')
+    // 关闭进程
+    process.exit()
   }
 }

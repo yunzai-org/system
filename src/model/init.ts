@@ -1,8 +1,4 @@
 import { Store } from './store'
-
-/**
- * 启动时，检查状态
- */
 export async function Init() {
   const data = await redis.get(Store.RESTART_KEY)
   if (data) {
@@ -18,7 +14,7 @@ export async function Init() {
         Bot[uin].pickUser(restart.id).sendMsg(msg)
       }
     } catch (error) {
-      /** 不发了，发不出去... */
+      // 不发了，发不出去
       logger.debug(error)
     }
     // 发送成功后删除key

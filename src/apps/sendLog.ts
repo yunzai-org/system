@@ -28,7 +28,6 @@ function getLog(logFile: string) {
   for (let i of log) {
     if (!i) continue
     if (keyWord && tmp.length >= maxNum) return
-    /* eslint-disable no-control-regex */
     i = i.replace(/\x1b[[0-9;]*m/g, '')
     i = i.replace(/\r|\n/, '')
     tmp.push(i)
@@ -80,7 +79,7 @@ export class SendLog extends Application<'message'> {
       this.e.reply(data)
       return
     } else {
-      this.e.reply(JSON.stringify(data))
+      this.e.reply(data)
       return
     }
   }
