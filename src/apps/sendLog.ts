@@ -36,8 +36,10 @@ function getLog(logFile: string) {
 }
 
 export class SendLog extends Application<'message'> {
-  constructor() {
+  constructor(e) {
     super('message')
+    // event
+    if (e) this.e = e
     this.rule = [
       {
         reg: /^#(运行|错误)*日志[0-9]*(.*)/,

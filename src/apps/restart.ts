@@ -29,16 +29,8 @@ export class Restart extends Application<'message'> {
         reg: /^#(停机|关机)$/,
         fnc: this.stop.name,
         permission: 'master'
-      },
-      {
-        reg: /test/,
-        fnc: this.test.name
       }
     ]
-  }
-
-  test() {
-    this.e.reply('1')
   }
 
   /**

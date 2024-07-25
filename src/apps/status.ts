@@ -82,8 +82,10 @@ class Count {
 }
 
 export class Status extends Application<'message'> {
-  constructor() {
+  constructor(e) {
     super('message')
+    // event
+    if (e) this.e = e
     this.rule = [
       {
         reg: /^(#|\/)状态$/,

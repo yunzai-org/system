@@ -4,6 +4,7 @@ import { existsSync, readdirSync } from 'node:fs'
 import { BOT_NAME, PLUGINS_PATH } from 'yunzai'
 import { Restart } from './restart.js'
 import { sleep } from 'yunzai'
+import { getCommandOutput } from '../model/utils.js'
 
 let typeName = BOT_NAME
 let messages = []
@@ -65,20 +66,29 @@ async function getTime(plugin = '') {
 }
 
 export class Update extends Application<'message'> {
-  constructor() {
+  constructor(e) {
     super('message')
+    // event
+    if (e) this.e = e
     this.rule = [
       {
         reg: /^#更新日志/,
-        fnc: this.updateLog.name
+        fnc: this.updateLog.name,
+        permission: 'master'
       },
       {
         reg: /^#(强制)?更新/,
-        fnc: this.update.name
+        fnc: this.update.name,
+        permission: 'master'
       },
       {
         reg: /^#(静默)?全部(强制)?更新$/,
         fnc: this.updateAll.name,
+        permission: 'master'
+      },
+      {
+        reg: /test3/,
+        fnc: this.restart.name,
         permission: 'master'
       }
     ]
@@ -107,6 +117,7 @@ export class Update extends Application<'message'> {
 
     // false 错误
     if (name === false) {
+      this.e.reply('插件获取错误')
       return
     }
 
@@ -173,6 +184,7 @@ export class Update extends Application<'message'> {
       await this.e.reply(`${typeName} 已是最新\n最后更新时间：${time}`)
     } else {
       await this.e.reply(`${typeName} 更新成功\n更新时间：${time}`)
+      // 更新成功
       isUp = true
       this.sendLog(plugin)
     }
@@ -252,8 +264,26 @@ export class Update extends Application<'message'> {
   /**
    * 重启
    */
-  restart = () => {
-    new Restart(this.e).restart()
+  restart = async () => {
+    await this.e.reply('yarn正在校验依赖...')
+    // 重启之前 ，进行  yarn -v yran && yarn build
+    getCommandOutput('yarn -v')
+      .then(() => {
+        getCommandOutput('yarn && yarn build')
+          .then(async message => {
+            logger.mark(message)
+            await this.e.reply('yarn依赖校验完成&&编译完成!')
+            new Restart(this.e).restart()
+          })
+          .catch(() => {
+            this.e.reply('yarn 依赖存在错误，请手动检查')
+          })
+
+        //
+      })
+      .catch(() => {
+        this.e.reply('找不到 yarn , 请安装\nnpm i yarn@1.19.1 -g')
+      })
   }
 
   /**
