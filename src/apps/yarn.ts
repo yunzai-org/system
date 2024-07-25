@@ -12,6 +12,11 @@ export class nodeModules extends Application<'message'> {
     //
     this.rule = [
       {
+        reg: /^#云崽配置$/,
+        fnc: this.config.name,
+        permission: 'master'
+      },
+      {
         reg: /^#依赖配置$/,
         fnc: this.packagelist.name,
         permission: 'master'
@@ -29,11 +34,6 @@ export class nodeModules extends Application<'message'> {
       {
         reg: /^#依赖添加/,
         fnc: this.addPackagelist.name,
-        permission: 'master'
-      },
-      {
-        reg: /^#云崽配置/,
-        fnc: this.config.name,
         permission: 'master'
       },
       {
@@ -75,7 +75,7 @@ export class nodeModules extends Application<'message'> {
    * 校验依赖
    */
   checkPackagelist() {
-    const name = this.e.msg.replace(/^依赖检查/, '')
+    const name = this.e.msg.replace(/^#依赖检查/, '')
     const dir = join(process.cwd(), 'node_modules', name)
     if (!existsSync(dir)) {
       this.e.reply(`不存在${name}`)
@@ -122,7 +122,7 @@ export class nodeModules extends Application<'message'> {
    * @returns
    */
   async addPackagelist() {
-    const name = this.e.msg.replace(/^依赖添加/, '')
+    const name = this.e.msg.replace(/^#依赖添加/, '')
     if (!name) {
       this.e.reply('未知字符')
       return
