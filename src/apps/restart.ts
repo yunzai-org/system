@@ -1,6 +1,7 @@
 import { Application, ConfigController } from 'yunzai'
 import { Store } from '../model/store'
 import pm2 from 'pm2'
+import { getCommandOutput } from '../model/utils'
 
 // 执行锁
 let lock = false
@@ -9,9 +10,6 @@ let lock = false
 // 重启速度太快，icqq重复接收消息。
 const RESTART_TIME = 5 * 1000
 
-/**
- * 重启 ｜ 停机 ｜ 关机
- */
 export class Restart extends Application<'message'> {
   constructor(e) {
     // 消息
@@ -21,8 +19,8 @@ export class Restart extends Application<'message'> {
     // rule
     this.rule = [
       {
-        reg: /^#重启$/,
-        fnc: this.restart.name,
+        reg: /^#(后台)?(编译)?重启$/,
+        fnc: this.buidlRestart.name,
         permission: 'master'
       },
       {
@@ -31,6 +29,44 @@ export class Restart extends Application<'message'> {
         permission: 'master'
       }
     ]
+  }
+
+  /**
+   *
+   * @returns
+   */
+  async buidlRestart() {
+    if (/^编译/.test(this.e.msg)) {
+      this.restart()
+      return
+    }
+    await this.e.reply('yarn正在校验依赖...')
+    // 重启之前 ，进行  yarn -v yran && yarn build
+    getCommandOutput('yarn -v')
+      .then(() => {
+        getCommandOutput('yarn && yarn build')
+          .then(async message => {
+            //
+            logger.mark(message)
+            //
+            await this.e.reply('yarn依赖校验完成&&编译完成!')
+            // 解锁
+            lock = false
+            //
+            this.restart()
+          })
+          .catch(() => {
+            // 解锁
+            lock = false
+
+            this.e.reply('yarn 依赖存在错误，请手动检查')
+          })
+      })
+      .catch(() => {
+        // 解锁
+        lock = false
+        this.e.reply('找不到 yarn , 请安装\nnpm i yarn@1.19.1 -g')
+      })
   }
 
   /**
@@ -119,15 +155,28 @@ export class Restart extends Application<'message'> {
           if (err) {
             Error(err?.message, 'pm2 重启错误')
           } else {
-            // 断开连接
-            pm2.disconnect()
-            //
             lock = false
-            //
-            setTimeout(() => {
-              // 关闭当前
+
+            if (/^后台/.test(this.e.msg)) {
               process.exit()
+            }
+
+            // 下线
+            global.Bot.logout()
+            // 打印记录
+            pm2.launchBus((err, bus) => {
+              if (err) {
+                console.error(err)
+                process.exit(2)
+              }
+              bus.on('log:out', packet => {
+                if (packet?.data) console.log(packet.data)
+              })
+              bus.on('log:err', packet => {
+                if (packet?.data) console.log(packet.data)
+              })
             })
+            //
           }
         })
       })
