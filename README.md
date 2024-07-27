@@ -80,6 +80,14 @@ yarn app
 
 > ./node_modules/XXX/package.json -> { version:"" }
 
+- #依赖添加
+
+> `#依赖添加yunzai`
+
+> `#依赖添加yz-system@latest`
+
+> `#依赖添加puppeteer@22`
+
 - #云崽配置
 
 > 查看yunzai.config.js
