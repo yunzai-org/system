@@ -1,9 +1,13 @@
 import { join } from 'path'
 import { Application, makeForwardMsg } from 'yunzai'
-import { createRequire } from 'module'
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs'
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  unlinkSync,
+  writeFileSync
+} from 'fs'
 import { getCommandOutput } from '../model/utils'
-const require = createRequire(import.meta.url)
 export class nodeModules extends Application<'message'> {
   constructor(e) {
     super('message')
@@ -37,6 +41,21 @@ export class nodeModules extends Application<'message'> {
         permission: 'master'
       },
       {
+        reg: /^#依赖加载$/,
+        fnc: this.packagelistInsall.name,
+        permission: 'master'
+      },
+      {
+        reg: /^#依赖移除/,
+        fnc: this.removePackagelist.name,
+        permission: 'master'
+      },
+      {
+        reg: /^#依赖锁删除$/,
+        fnc: this.removePackageLock.name,
+        permission: 'master'
+      },
+      {
         reg: /^#云崽写入配置/,
         fnc: this.writeConifig.name,
         permission: 'master'
@@ -49,7 +68,7 @@ export class nodeModules extends Application<'message'> {
    */
   async packagelist() {
     const dir = join(process.cwd(), 'package.json')
-    const pkg = require(dir)
+    const pkg = JSON.parse(readFileSync(dir, 'utf-8'))
     if (pkg?.dependencies) {
       const arr = Object.keys(pkg.dependencies)
       if (arr.length <= 0) {
@@ -86,7 +105,7 @@ export class nodeModules extends Application<'message'> {
       this.e.reply(`不存在${name}/package.json`)
       return
     }
-    const pkg2 = require(dir2)
+    const pkg2 = JSON.parse(readFileSync(dir2, 'utf-8'))
     const version2 = pkg2.version
     if (!version2) {
       this.e.reply('依赖版本未知')
@@ -94,7 +113,7 @@ export class nodeModules extends Application<'message'> {
     }
     // loacl
     const dir3 = join(process.cwd(), 'package.json')
-    const pkg3 = require(dir3)
+    const pkg3 = JSON.parse(readFileSync(dir3, 'utf-8'))
     if (pkg3?.dependencies) {
       const version3 = pkg3.dependencies[name]
       if (!version3) {
@@ -117,6 +136,67 @@ export class nodeModules extends Application<'message'> {
     //
   }
 
+  async packagelistInsall() {
+    await this.e.reply('yarn正在校验依赖...')
+    getCommandOutput('yarn -v')
+      .then(() => {
+        getCommandOutput(`yarn`)
+          .then(async message => {
+            logger.mark(message)
+            await this.e.reply('yarn 校验完成!')
+          })
+          .catch(err => {
+            logger.error(err)
+            this.e.reply('yarn 依赖存在错误，请手动检查')
+          })
+      })
+      .catch(() => {
+        this.e.reply('找不到 yarn , 请安装\nnpm i yarn@1.19.1 -g')
+      })
+  }
+
+  /**
+   *
+   * @returns
+   */
+  async removePackagelist() {
+    const name = this.e.msg.replace(/^#依赖移除/, '')
+    if (!name) {
+      this.e.reply('未知字符')
+      return
+    }
+    await this.e.reply('yarn正在校验依赖...')
+    getCommandOutput('yarn -v')
+      .then(() => {
+        getCommandOutput(`yarn remove ${name}`)
+          .then(async message => {
+            logger.mark(message)
+            await this.e.reply('yarn 移除完成!')
+          })
+          .catch(err => {
+            logger.error(err)
+            this.e.reply('yarn 依赖存在错误，请手动检查')
+          })
+      })
+      .catch(() => {
+        this.e.reply('找不到 yarn , 请安装\nnpm i yarn@1.19.1 -g')
+      })
+  }
+
+  /**
+   *
+   * @returns
+   */
+  async removePackageLock() {
+    const dir = join(process.cwd(), 'yarn.lock')
+    if (!existsSync(dir)) {
+      this.e.reply('不存在 yarn.lock')
+      return
+    }
+    unlinkSync(dir)
+    this.e.reply('删除完成')
+  }
+
   /**
    *
    * @returns
@@ -135,7 +215,8 @@ export class nodeModules extends Application<'message'> {
             logger.mark(message)
             await this.e.reply('yarn 添加完成!')
           })
-          .catch(() => {
+          .catch(err => {
+            logger.error(err)
             this.e.reply('yarn 依赖存在错误，请手动检查')
           })
       })
@@ -149,21 +230,33 @@ export class nodeModules extends Application<'message'> {
    */
   async build() {
     await this.e.reply('yarn正在校验依赖...')
-    // 重启之前 ，进行  yarn -v yran && yarn build
     getCommandOutput('yarn -v')
       .then(() => {
-        getCommandOutput('yarn && yarn build')
+        //
+        getCommandOutput('yarn')
           .then(async message => {
             logger.mark(message)
-            await this.e.reply('yarn依赖校验完成&&编译完成!')
+            await this.e.reply('yarn依赖校验完成!')
+            //
+            getCommandOutput('yarn build')
+              .then(async message => {
+                logger.mark(message)
+                await this.e.reply('yarn编译完成!')
+              })
+              .catch(err => {
+                logger.error(err)
+                this.e.reply('yarn 编译错误,请手动检查！')
+              })
           })
           .catch(() => {
-            this.e.reply('yarn 依赖存在错误，请手动检查')
+            this.e.reply('yarn 依赖存在错误，请手动检查！')
           })
       })
       .catch(() => {
         this.e.reply('找不到 yarn , 请安装\nnpm i yarn@1.19.1 -g')
       })
+
+    //
   }
 
   /**

@@ -40,26 +40,35 @@ export class Restart extends Application<'message'> {
       this.restart()
       return
     }
-    await this.e.reply('yarn正在校验依赖...')
-    // 重启之前 ，进行  yarn -v yran && yarn build
+
     getCommandOutput('yarn -v')
       .then(() => {
-        getCommandOutput('yarn && yarn build')
+        //
+        getCommandOutput('yarn')
           .then(async message => {
-            //
             logger.mark(message)
+            await this.e.reply('yarn依赖校验完成!')
             //
-            await this.e.reply('yarn依赖校验完成&&编译完成!')
-            // 解锁
-            lock = false
-            //
-            this.restart()
+            getCommandOutput('yarn build')
+              .then(async message => {
+                logger.mark(message)
+                await this.e.reply('yarn编译完成!')
+                // 解锁
+                lock = false
+                //
+                this.restart()
+              })
+              .catch(err => {
+                logger.error(err)
+                // 解锁
+                lock = false
+                this.e.reply('yarn 编译错误,请手动检查！')
+              })
           })
           .catch(() => {
             // 解锁
             lock = false
-
-            this.e.reply('yarn 依赖存在错误，请手动检查')
+            this.e.reply('yarn 依赖存在错误，请手动检查！')
           })
       })
       .catch(() => {

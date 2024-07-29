@@ -20,6 +20,10 @@ export default {
 }
 ```
 
+- use
+
+v1.0.3以上版本可聊天窗口发送`#系统帮助`
+
 - update
 
 ```sh
@@ -49,7 +53,3 @@ yarn
 ```sh
 yarn app
 ```
-
-- use
-
-聊天窗口发送`#系统帮助`
