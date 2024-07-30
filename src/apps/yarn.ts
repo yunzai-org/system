@@ -7,7 +7,7 @@ import {
   unlinkSync,
   writeFileSync
 } from 'fs'
-import { getCommandOutput } from '../model/utils'
+import { getCommandOutput } from '../model/utils.js'
 export class nodeModules extends Application<'message'> {
   constructor(e) {
     super('message')
@@ -248,7 +248,8 @@ export class nodeModules extends Application<'message'> {
                 this.e.reply('yarn 编译错误,请手动检查！')
               })
           })
-          .catch(() => {
+          .catch(err => {
+            logger.error(err)
             this.e.reply('yarn 依赖存在错误，请手动检查！')
           })
       })

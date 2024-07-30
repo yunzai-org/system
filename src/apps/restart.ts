@@ -1,4 +1,4 @@
-import { Application, ConfigController } from 'yunzai'
+import { Application, ConfigController, Observer } from 'yunzai'
 import { Store } from '../model/store'
 import pm2 from 'pm2'
 import { getCommandOutput } from '../model/utils'
@@ -26,6 +26,11 @@ export class Restart extends Application<'message'> {
       {
         reg: /^#(停机|关机)$/,
         fnc: this.stop.name,
+        permission: 'master'
+      },
+      {
+        reg: /^#结束进程$/,
+        fnc: this.exit.name,
         permission: 'master'
       }
     ]
@@ -201,11 +206,108 @@ export class Restart extends Application<'message'> {
       this.e.reply('正在调控，请勿重复进行...')
       return
     }
+
+    this.e.reply('请再次发送，以确认关机')
+
+    const O = new Observer('message')
+    O.use(
+      async (e, _, close) => {
+        //
+        const Error = (err: any, msg?: string) => {
+          lock = false
+          if (err) logger.error(err)
+          if (msg) {
+            logger.error(msg)
+            e.reply(msg)
+          }
+          pm2.disconnect()
+          // delete
+          redis.del(Store.RESTART_KEY)
+        }
+
+        if (/^#(停机|关机)$/.test(e.msg)) {
+          // 不是生产环境
+          if (process.env?.NODE_ENV !== 'production') {
+            await this.e.reply('准备杀死进程...')
+            // 直接结束
+            process.exit()
+          }
+
+          // config
+          const cfg = ConfigController.pm2
+          // 查看情况
+          pm2.connect(err => {
+            if (err) {
+              Error(err?.message, 'pm2出错')
+              return
+            }
+            // 得到列表
+            pm2.list(async (err, processList) => {
+              if (err) {
+                Error(err?.message, 'pm2 list 获取失败')
+                return
+              }
+              //
+              if (processList.length <= 0) {
+                Error(
+                  undefined,
+                  'pm2 进程配置为空, 你从未有pm2进程记录,无法使用'
+                )
+                return
+              }
+              //
+              const app = processList.find(p => p.name === cfg.apps[0].name)
+              //
+              if (!app) {
+                Error(undefined, 'pm2 未匹配到进程配置，配置可能被修改了')
+                return
+              }
+              pm2.stop(cfg.apps[0].name, () => {
+                if (err) {
+                  Error(err?.message, 'pm2 关闭')
+                }
+              })
+            })
+          })
+        } else {
+          e.reply('已取消关机')
+        }
+        close()
+      },
+      [this.e.user_id]
+    )
+
     //
-    lock = true
+  }
+
+  /**
+   *
+   * @returns
+   */
+  async exit() {
+    if (lock) {
+      this.e.reply('正在调控，请勿重复进行...')
+      return
+    }
+
     //
-    await this.e.reply('准备杀死进程...')
-    // 关闭进程
-    process.exit()
+    this.e.reply('请再次发送，以确认!')
+
+    //
+    const O = new Observer('message')
+    //
+    O.use(
+      async (e, _, close) => {
+        if (/^#结束进程$/.test(e.msg)) {
+          process.exit()
+        } else {
+          e.reply('已取消！')
+        }
+        close()
+      },
+      [this.e.user_id]
+    )
+
+    //
   }
 }
