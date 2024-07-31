@@ -31,26 +31,6 @@ export class nodeModules extends Application<'message'> {
         permission: 'master'
       },
       {
-        reg: /^#源码编译$/,
-        fnc: this.build.name,
-        permission: 'master'
-      },
-      {
-        reg: /^#依赖添加/,
-        fnc: this.addPackagelist.name,
-        permission: 'master'
-      },
-      {
-        reg: /^#依赖加载$/,
-        fnc: this.packagelistInsall.name,
-        permission: 'master'
-      },
-      {
-        reg: /^#依赖移除/,
-        fnc: this.removePackagelist.name,
-        permission: 'master'
-      },
-      {
         reg: /^#依赖锁删除$/,
         fnc: this.removePackageLock.name,
         permission: 'master'
@@ -69,24 +49,31 @@ export class nodeModules extends Application<'message'> {
   async packagelist() {
     const dir = join(process.cwd(), 'package.json')
     const pkg = JSON.parse(readFileSync(dir, 'utf-8'))
+    let arr = []
     if (pkg?.dependencies) {
-      const arr = Object.keys(pkg.dependencies)
-      if (arr.length <= 0) {
-        this.e.reply('是空的package.dependencies')
-      } else {
-        const msg = await makeForwardMsg(
-          this.e,
-          arr.map(key => `${key}:${pkg.dependencies[key]}`)
+      const dependenciesArray = Object.keys(pkg.dependencies)
+      if (dependenciesArray.length >= 0) {
+        const arr2 = dependenciesArray.map(
+          key => `${key}:"${pkg.dependencies[key]}"`
         )
-        if (!msg) {
-          this.e.reply('出错啦')
-        } else {
-          this.e.reply(msg)
-        }
+        arr = [...arr, '[dependencies]', ...arr2]
       }
+    }
+    if (pkg?.devDependencies) {
+      const devDependenciesArray = Object.keys(pkg.devDependencies)
+      if (devDependenciesArray.length >= 0) {
+        const arr2 = devDependenciesArray.map(
+          key => `${key}:"${pkg.devDependencies[key]}"`
+        )
+        arr = [...arr, '[devDependencies]', ...arr2]
+      }
+    }
+    //
+    if (arr.length <= 0) {
+      this.e.reply('依赖为空')
     } else {
-      //
-      this.e.reply('未找到package.dependencies')
+      const msg = await makeForwardMsg(this.e, arr, 'Yunzai 依赖配置信息')
+      this.e.reply(msg)
     }
   }
 

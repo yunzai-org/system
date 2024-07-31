@@ -19,7 +19,7 @@ export class Restart extends Application<'message'> {
     // rule
     this.rule = [
       {
-        reg: /^#(后台)?(编译)?重启$/,
+        reg: /^#(控制台)?(编译)?重启$/,
         fnc: this.buidlRestart.name,
         permission: 'master'
       },
@@ -41,7 +41,9 @@ export class Restart extends Application<'message'> {
    * @returns
    */
   async buidlRestart() {
-    if (/^编译/.test(this.e.msg)) {
+    // 不是编译
+    if (!/^编译/.test(this.e.msg)) {
+      // 进入重启
       this.restart()
       return
     }
@@ -58,10 +60,6 @@ export class Restart extends Application<'message'> {
               .then(async message => {
                 logger.mark(message)
                 await this.e.reply('yarn编译完成!')
-                // 解锁
-                lock = false
-                //
-                this.restart()
               })
               .catch(err => {
                 logger.error(err)
@@ -171,12 +169,14 @@ export class Restart extends Application<'message'> {
           } else {
             lock = false
 
-            if (/^后台/.test(this.e.msg)) {
+            if (!/^控制台/.test(this.e.msg)) {
+              // 不是控制台重启，直接杀死当前进程
               process.exit()
             }
 
             // 下线
             global.Bot.logout()
+
             // 打印记录
             pm2.launchBus((err, bus) => {
               if (err) {
@@ -190,6 +190,7 @@ export class Restart extends Application<'message'> {
                 if (packet?.data) console.log(packet.data)
               })
             })
+
             //
           }
         })

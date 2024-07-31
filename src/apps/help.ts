@@ -12,11 +12,28 @@ export class help extends Application<'message'> {
     this.event = 'message'
     this.rule = [
       {
-        reg: /^(#|\/)系统帮助/,
+        reg: /^(#|\/)系统帮助$/,
         fnc: this.help.name
+      },
+      {
+        reg: /^(#|\/)系统帮助缓冲释放/,
+        fnc: this.helpDelete.name
       }
     ]
   }
+
+  /**
+   *
+   */
+  async helpDelete() {
+    cache = null
+    this.e.reply('清理完成')
+  }
+
+  /**
+   *
+   * @returns
+   */
   async help() {
     if (cache) {
       this.e.reply(Segment.image(cache))

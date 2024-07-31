@@ -11,10 +11,10 @@
       desc: '查看logs目录文件'
     - icon: weapon
       title: '#更新'
-      desc: '也指定#更新XXX,可选组合全部、强制、静默,如#全部更新'
+      desc: '也指定#更新XXX,可选组合(全部&强制&静默),如#全部更新'
     - icon: 问号
       title: '#重启'
-      desc: '调用pm2.restart'
+      desc: '调用pm2.restart,可选(控制台&编译)'
     - icon: 问号
       title: '#关机'
       desc: '调用exit()'
@@ -30,24 +30,24 @@
     - icon: 树脂
       title: '#依赖检查XXX'
       desc: './package.json -> { dependencies:{XXX:???} }'
-    - icon: ledger
-      title: '#依赖添加XXX'
-      desc: '#依赖添加yz-system@latest'
-    - icon: 浮世
-      title: '#依赖加载'
-      desc: '#依赖yarn'
-    - icon: 星辉
-      title: '#依赖移除XXX'
-      desc: '#依赖移除yz-system@latest'
-    - icon: 原石
-      title: '#依赖锁删除'
-      desc: 'rm -rf yarn.lock'
     - icon: 打卡
       title: '#云崽配置'
       desc: '查看yunzai.config.js'
     - icon: 打卡
       title: '#云崽写入配置'
       desc: '#云崽写入配置XXX'
-    - icon: 统计
-      title: '#源码编译'
-      desc: '执行yarn && yarn build'
+    - icon: 原石
+      title: '#依赖锁删除'
+      desc: 'rm -rf yarn.lock'
+    - icon: ledger
+      title: '#shell yarn add yz-system@latest -W'
+      desc: '添加依赖yz-system'
+    - icon: 浮世
+      title: '#shell yarn'
+      desc: '执行yarn进行依赖加载'
+    - icon: 星辉
+      title: '#shell yarn remove yz-system'
+      desc: '#依赖移除yz-system'
+    - icon: 星辉
+      title: '#shell yarn build'
+      desc: '编译ts源码为js'
