@@ -39,7 +39,7 @@ export class help extends Application<'message'> {
       this.e.reply(Segment.image(cache))
       return
     }
-    const dir = require('../../public/yaml/help.yaml')
+    const dir = require('../../assets/yaml/help.yaml')
     try {
       const Data = parse(readFileSync(dir, 'utf-8'))
       const Bf = await Screenshot.getHelp({

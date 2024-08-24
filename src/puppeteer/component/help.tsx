@@ -22,7 +22,7 @@ export default function Help({ helpData }) {
                 <div className="item" key={index}>
                   <img
                     className="item-img"
-                    src={require(`../../../public/img/icon/${item.icon}.png`)}
+                    src={require(`../../../assets/img/icon/${item.icon}.png`)}
                   />
                   <div className="title">
                     <div className="text">{item.title}</div>

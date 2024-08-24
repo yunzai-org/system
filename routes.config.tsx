@@ -12,7 +12,7 @@ export default defineConfig([
       html_body: (
         <Help
           helpData={parse(
-            readFileSync(require('./public/yaml/help.yaml'), 'utf-8')
+            readFileSync(require('./assets/yaml/help.yaml'), 'utf-8')
           )}
         />
       )

@@ -10,7 +10,7 @@ const require = createRequire(import.meta.url)
 
 export const DefineOptions: ComponentCreateOpsionType = {
   html_head: (
-    <link rel="stylesheet" href={require('../../public/css/help.css')} />
+    <link rel="stylesheet" href={require('../../assets/css/help.css')} />
   )
 }
 
