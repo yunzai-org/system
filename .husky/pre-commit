@@ -1,6 +1,6 @@
 # macos
 
-find . -name "*.txt" -type f -delete
+find . -name ".DS_Store" -type f -delete
 
 # format
 npm run format
