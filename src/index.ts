@@ -1,4 +1,4 @@
-import { Application, applicationOptions, useEvent } from 'yunzai'
+import { Application, applicationOptions } from 'yunzai'
 import * as apps from './apps.js'
 import { Init } from './model/init.js'
 export default () => {
@@ -24,31 +24,27 @@ export default () => {
       // init
       Init()
     },
-    async mounted(e) {
+    mounted(e) {
       // 存储
       const data = []
       // 如果key不存在
       const cache = {}
       // 使用event以确保得到正常类型
-      await useEvent(
-        e => {
-          for (const item of rules) {
-            // 匹配正则
-            // 存在key
-            // 第一次new
-            if (
-              new RegExp(item.reg).test(e.msg) &&
-              apps[item.key] &&
-              !cache[item.key]
-            ) {
-              cache[item.key] = true
-              data.push(new apps[item.key]())
-            }
+      if (e['msg']) {
+        for (const item of rules) {
+          // 匹配正则
+          // 存在key
+          // 第一次new
+          if (
+            new RegExp(item.reg).test(e['msg']) &&
+            apps[item.key] &&
+            !cache[item.key]
+          ) {
+            cache[item.key] = true
+            data.push(new apps[item.key]())
           }
-        },
-        // 推倒为message类型的event
-        [e, 'message']
-      )
+        }
+      }
       // back
       return data
     }

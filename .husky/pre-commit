@@ -1,0 +1,9 @@
+# macos
+
+find . -name "*.txt" -type f -delete
+
+# format
+npm run format
+
+# lint
+npm run check-format

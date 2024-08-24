@@ -14,24 +14,15 @@ yarn add yz-system@latest -W
 - yunzai.config.js
 
 ```js
-import system from 'yz-system'
-export default {
-  application: [system()]
-}
+import { defineConfig } from 'yunzai'
+export default defineConfig({
+  applications: ['yz-system']
+})
 ```
 
 - use
 
 聊天窗口发送`#系统帮助`
-
-- update
-
-```sh
-# delete
-yarn remove yz-system
-# add
-yarn add yz-system@latest -W
-```
 
 ## 开发
 
@@ -55,6 +46,10 @@ yarn app
 ```
 
 ## 更新记录
+
+### 1.0.8
+
+- 调整更新逻辑
 
 ### 1.0.7
 

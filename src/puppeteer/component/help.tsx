@@ -1,19 +1,18 @@
 import React from 'react'
 import { BOT_NAME, ConfigController } from 'yunzai'
 import { createRequire } from 'react-puppeteer'
+import { readFileSync } from 'fs'
 const require = createRequire(import.meta.url)
+const dir = require('../../../package.json')
 export default function Help({ helpData }) {
   const version = ConfigController.package.version
+  const data = JSON.parse(readFileSync(dir, 'utf-8'))
   return (
     <>
       <div className="container" id="container">
         <div className="head_box">
           <div className="id_text">{BOT_NAME} System</div>
-          <h2 className="day_text">使用说明 V{version}</h2>
-          <img
-            className="genshin_logo"
-            src={require('../../../public/img/原神.png')}
-          />
+          <h2 className="day_text">使用说明 V{data.version}</h2>
         </div>
         {helpData.map((val, index) => (
           <div key={index} className="data_box">
@@ -34,7 +33,9 @@ export default function Help({ helpData }) {
             </div>
           </div>
         ))}
-        <div className="logo">Created By {BOT_NAME}</div>
+        <div className="logo">
+          Created By {BOT_NAME} V{version}
+        </div>
       </div>
     </>
   )

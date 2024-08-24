@@ -1,22 +1,21 @@
 import React from 'react'
-import { defineConfig } from 'react-puppeteer'
-import { Help } from './src/puppeteer/component/index'
 import { parse } from 'yaml'
 import { readFileSync } from 'fs'
-import { createRequire } from 'react-puppeteer'
+import { defineConfig, createRequire } from 'react-puppeteer'
+import { DefineOptions, Help } from './src/puppeteer/index'
 const require = createRequire(import.meta.url)
-const dir = require('./public/yaml/help.yaml')
-const Data = parse(readFileSync(dir, 'utf-8'))
 export default defineConfig([
   {
     url: '/help',
     options: {
-      html_head: (
-        <>
-          <link rel="stylesheet" href={require('./public/css/help.css')} />
-        </>
-      ),
-      html_body: <Help helpData={Data} />
+      ...DefineOptions,
+      html_body: (
+        <Help
+          helpData={parse(
+            readFileSync(require('./public/yaml/help.yaml'), 'utf-8')
+          )}
+        />
+      )
     }
   }
 ])

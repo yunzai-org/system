@@ -1,30 +1,33 @@
 import { Application, makeForwardMsg, execAsync, PLUGINS_PATH } from 'yunzai'
 import { trim } from 'lodash-es'
-import { existsSync } from 'node:fs'
+import { existsSync, readdirSync } from 'node:fs'
 import { BOT_NAME } from 'yunzai'
-import { Restart } from './restart.js'
-import { readdir } from 'node:fs/promises'
 import { join } from 'node:path'
 
 // id
 let oldCommitId = null
+
 // 执行锁
 let lock = false
 
 /**
- * 得到插件
- * @param plugin
+ *
+ * @param name
  * @returns
  */
-function getPlugin(name = '', name2 = '') {
-  if (!name || name == '') {
-    if (!name2 || name2 == '') return ''
-    name = name2
-  }
+const isPluinName = (name: string) => {
   // 指定插件不存在
   if (!existsSync(join(PLUGINS_PATH, name, '.git'))) return false
-  // 存在则返回
-  return name
+  return true
+}
+
+/**
+ *
+ * @returns
+ */
+const isLocalGit = () => {
+  if (!existsSync(join(process.cwd(), '.git'))) return false
+  return true
 }
 
 /**
@@ -32,7 +35,7 @@ function getPlugin(name = '', name2 = '') {
  * @param name
  * @returns
  */
-async function getcommitId(pluginName = '') {
+const getcommitId = async (pluginName = '') => {
   const Shells = ['git rev-parse --short HEAD']
   if (pluginName && pluginName != '') {
     Shells.unshift(`cd "plugins/${pluginName}"`)
@@ -46,11 +49,9 @@ async function getcommitId(pluginName = '') {
  * @param plugin
  * @returns
  */
-async function getTime(pluginName = '') {
+const getTime = async (pluginName = '') => {
   const Shells = ['git log -1 --pretty=%cd --date=format:"%F %T"']
-  if (pluginName) {
-    Shells.unshift(`cd "plugins/${pluginName}"`)
-  }
+  if (pluginName != '') Shells.unshift(`cd "plugins/${pluginName}"`)
   try {
     const res = await execAsync(Shells.join(' && '))
     return trim(res?.stdout)
@@ -60,7 +61,84 @@ async function getTime(pluginName = '') {
   }
 }
 
-// #更新日志 #更新 #插件列表
+/**
+ *
+ * @param stdErr
+ * @param stdout
+ * @returns
+ */
+const getGitErr = (stdErr: string, stdout: string) => {
+  const MSG = ['更新失败！']
+  if (stdErr.includes('Timed out')) {
+    MSG.push(`连接超时:${stdErr.match(/'(.+?)'/g)[0].replace(/'/g, '')}`)
+    return
+  }
+  if (/Failed to connect|unable to access/g.test(stdErr)) {
+    MSG.push(`连接失败：${stdErr.match(/'(.+?)'/g)[0].replace(/'/g, '')}`)
+    return MSG
+  }
+  if (
+    stdErr.includes('be overwritten by merge') ||
+    stdout.includes('CONFLICT')
+  ) {
+    MSG.push(`存在冲突：\n${stdErr}`)
+    MSG.push('请解决冲突后再更新，或者执行#强制更新，放弃本地修改')
+    return MSG
+  }
+  return MSG
+}
+
+/**
+ *
+ * @param name
+ * @returns
+ */
+const getGitLog = async (name: string) => {
+  const Shells = ['git log -100 --pretty="%h||[%cd] %s" --date=format:"%F %T"']
+  // 进入插件
+  if (name != '') Shells.unshift(`cd "plugins/${name}`)
+  // 执行
+  const res = await execAsync(Shells.join(' && '))
+  if (!res.stdout) {
+    return ['记录不存在']
+  }
+  // 去除前后空格，并转为数组
+  const LogArray = res.stdout.trim().split('\n')
+  // logs记录
+  const Logs: string[] = []
+  for (const str of LogArray) {
+    const strArr = str.split('||')
+    if (strArr[0] == oldCommitId) break
+    if (strArr[1].includes('Merge branch')) continue
+    if (strArr[1] && strArr[1] !== '') {
+      Logs.push(strArr[1])
+    }
+  }
+  // 记录为空
+  if (Logs.length <= 0) {
+    return ['记录不存在']
+  }
+  // 记录条数
+  const Size = Logs.length
+  try {
+    const Shell2 = ['git config -l', `cd "plugins/${name}"`]
+    const res = await execAsync(Shell2.join(' && '))
+    if (res?.stdout) {
+      const end = res.stdout
+        .match(/remote\..*\.url=.+/g)
+        .join('\n\n')
+        .replace(/remote\..*\.url=/g, '')
+        .replace(/\/\/([^@]+)@/, '//')
+      Logs.push(end)
+    }
+  } catch (error) {
+    logger.error(error.toString())
+  }
+  return {
+    msg: Logs,
+    docs: `${name || BOT_NAME} 更新日志，共${Size}条`
+  }
+}
 
 export class Update extends Application<'message'> {
   constructor(e) {
@@ -98,67 +176,35 @@ export class Update extends Application<'message'> {
       lock = false
       return
     }
-    // 获取插件
-    const name = getPlugin(
-      '',
-      this.e.msg.replace(/^#(全部)?(静默)?(强制)?更新/, '')
-    )
-    // false 错误
-    if (name === false) {
-      lock = false
-      this.e.reply('插件名不存在')
-      return
-    }
-
-    const Update = async (name: string) => {
-      // 运行更新
-      const IsUpdate = await this.runUpdate(name)
-      //是否需要重启
-      if (IsUpdate) {
-        setTimeout(() => {
-          new Restart(this.e).buidlRestart()
-        }, 2000)
-      } else {
-        lock = false
+    const name = this.e.msg.replace(/^#(全部)?(静默)?(强制)?更新/, '')
+    // 更新指定插件
+    if (name != '') {
+      // 判断插件是否存在
+      if (!isPluinName(name)) {
+        this.e.reply('插件不存在')
+        return
       }
-    }
-
-    if (!/全部/.test(this.e.msg)) {
-      Update(name)
+      this.runUpdate(name)
       return
     }
-
-    //
-    const names = (await readdir(PLUGINS_PATH, { withFileTypes: true }))
-      .filter(file => !file.isFile())
-      .map(dir => dir.name)
-
+    if (!/全部/.test(this.e.msg)) {
+      // 更新本地git
+      this.runUpdate('')
+      return
+    }
+    const names = readdirSync(PLUGINS_PATH, { withFileTypes: true })
+      .filter(item => !item.isFile() && isPluinName(item.name))
+      .map(item => item.name)
+    // 更新全部插件,包裹本地应用
+    if (isLocalGit()) names.unshift('')
     //
     if (names.length <= 0) {
-      Update(name)
+      this.e.reply('无任何可进行的更新')
       return
     }
-
-    // 全部更新
-
-    let IsU = false
-
-    for (const name of names) {
-      // 运行更新
-      const IsUpdate = await this.runUpdate(name)
-      //是否需要重启
-      if (IsUpdate) IsU = true
-    }
-
-    if (IsU) {
-      setTimeout(() => {
-        new Restart(this.e).buidlRestart()
-      }, 2000)
-    } else {
-      lock = false
-    }
-
-    //
+    // 并发执行
+    names.map(name => this.runUpdate(name))
+    return
   }
 
   /**
@@ -168,45 +214,71 @@ export class Update extends Application<'message'> {
    */
   async runUpdate(pluginName = '') {
     const Shells: string[] = []
-    if (pluginName) Shells.push(`cd "plugins/${pluginName}"`)
+    if (pluginName != '') Shells.push(`cd "plugins/${pluginName}"`)
     if (/强制/.test(this.e.msg)) {
       Shells.push('git reset --hard')
       Shells.push('git pull --rebase --allow-unrelated-histories')
     } else {
       Shells.push('git pull --no-rebase')
     }
-    // id
+    // 开始异步行为
     oldCommitId = await getcommitId(pluginName)
     // name
-    const Name = pluginName == '' ? BOT_NAME : pluginName
+    const Name = pluginName != '' ? pluginName : BOT_NAME
     // 记录
     logger.mark(`开始更新 : ${Name}`)
+    // 收集消息
     const msg = [`开始更新 : ${Name}`]
-    // res
+    //
     const res = await execAsync(Shells.join(' && '))
-    // 发送错误
+    // 错误
     if (res?.stderr) {
       logger.mark(`更新失败：${Name}`)
+      //
       if (!/静默/.test(this.e.msg)) {
-        this.gitErr(res.stderr.toString(), res.stdout.toString(), Name)
+        // 发送更新失败
+        msg.push(`更新失败:${Name}`)
+        const m = getGitErr(res.stderr, res.stdout)
+        for (const s of m) {
+          msg.push(s)
+        }
+        const message = await makeForwardMsg(this.e, msg, `${Name} 运行记录`)
+        this.e.reply(message)
       }
+      // git 错误
       return
     }
+    // 得到更新时间
     const time = await getTime(pluginName)
     logger.mark(`最后更新时间：${time}`)
+    //
     if (/Already up|已经是最新/g.test(res.stdout)) {
+      //
       msg.push(`已是最新:${Name}\nDATE:${time}`)
+      //
       if (!/静默/.test(this.e.msg)) {
         console.log('this.e.msg', this.e.msg)
         this.e.reply(await makeForwardMsg(this.e, msg, `${Name} 运行记录`))
       }
+      //
     } else {
+      //
       if (!/静默/.test(this.e.msg)) {
-        msg.push(`更新成功:${Name}\nDATE:${time}`)
         // 更新成功
-        this.sendLog(pluginName, msg)
+        msg.push(`更新成功:${Name}\nDATE:${time}`)
+        const logs = await getGitLog(pluginName)
+        if (Array.isArray(logs)) {
+          for (const log of logs) {
+            msg.push(log)
+          }
+          this.e.reply(await makeForwardMsg(this.e, msg, `${Name} 运行记录`))
+        } else {
+          this.e.reply(
+            await makeForwardMsg(this.e, [...msg, ...logs.msg], logs.docs)
+          )
+        }
       }
-      return true
+      //
     }
     return
   }
@@ -217,7 +289,7 @@ export class Update extends Application<'message'> {
    * @param stdout
    * @returns
    */
-  async gitErr(stdErr: string, stdout: string, name: string) {
+  async gitErr(stdErr: string, stdout: string) {
     const MSG = ['更新失败！']
     if (stdErr.includes('Timed out')) {
       MSG.push(`连接超时:${stdErr.match(/'(.+?)'/g)[0].replace(/'/g, '')}`)
@@ -226,7 +298,6 @@ export class Update extends Application<'message'> {
     }
     if (/Failed to connect|unable to access/g.test(stdErr)) {
       MSG.push(`连接失败：${stdErr.match(/'(.+?)'/g)[0].replace(/'/g, '')}`)
-      this.e.reply(MSG.join('\n'))
       return
     }
     if (
@@ -238,9 +309,6 @@ export class Update extends Application<'message'> {
       this.e.reply(MSG.join('\n'))
       return
     }
-    this.e.reply(
-      await makeForwardMsg(this.e, [stdErr, stdout], `${name} 更新记录`)
-    )
     return
   }
 
@@ -249,83 +317,18 @@ export class Update extends Application<'message'> {
    * @returns
    */
   async updateLog() {
-    const name = getPlugin('', this.e.msg.replace(/^#更新日志/, ''))
-    if (name === false) return
-    this.sendLog(name)
-    return
-  }
-
-  /**
-   * 发送指定插件的更新记录
-   * @param name
-   * @returns
-   */
-  async sendLog(name: string, startLogs?: string[]) {
-    const Shells = [
-      'git log -100 --pretty="%h||[%cd] %s" --date=format:"%F %T"'
-    ]
-    // 进入插件
-    if (name) {
-      Shells.unshift(`cd "plugins/${name}`)
-    }
-    // 执行
-    const res = await execAsync(Shells.join(' && '))
-    if (!res.stdout) {
-      this.e.reply('记录不存在')
+    const name = this.e.msg.replace(/^#更新日志/, '')
+    // 空的，本地git不存在
+    if (name == '' && !isLocalGit()) {
+      this.e.reply('无更新记录')
       return
     }
-    // 去除前后空格，并转为数组
-    const LogArray = res.stdout.trim().split('\n')
-    // logs记录
-    const Logs: string[] = []
-    for (let str of LogArray) {
-      const strArr = str.split('||')
-      if (strArr[0] == oldCommitId) break
-      if (strArr[1].includes('Merge branch')) continue
-      if (strArr[1] && strArr[1] !== '') {
-        Logs.push(strArr[1])
-      }
-    }
-
-    // 记录为空
-    if (Logs.length <= 0) {
-      this.e.reply('记录不存在')
+    const logs = await getGitLog(name)
+    if (Array.isArray(logs)) {
+      this.e.reply(logs.join('\n'))
       return
     }
-    // 记录条数
-    const Size = Logs.length
-
-    try {
-      const Shell2 = ['git config -l', `cd "plugins/${name}"`]
-      const res = await execAsync(Shell2.join(' && '))
-      if (res?.stdout) {
-        const end = res.stdout
-          .match(/remote\..*\.url=.+/g)
-          .join('\n\n')
-          .replace(/remote\..*\.url=/g, '')
-          .replace(/\/\/([^@]+)@/, '//')
-        Logs.push(end)
-      }
-    } catch (error) {
-      //
-      logger.error(error.toString())
-    }
-
-    //
-    const msg = await makeForwardMsg(
-      this.e,
-      Array.isArray(startLogs) ? [...startLogs, ...Logs] : Logs,
-      `${name || BOT_NAME} 更新日志，共${Size}条`
-    )
-
-    //
-    if (msg) {
-      this.e.reply(msg)
-    } else {
-      this.e.reply('日志获取失败~')
-    }
-
-    //
+    this.e.reply(await makeForwardMsg(this.e, logs.msg, logs.docs))
     return
   }
 }

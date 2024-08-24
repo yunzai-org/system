@@ -269,18 +269,19 @@ export class nodeModules extends Application<'message'> {
       this.e.reply('不存在 yunzai.config.js')
       return
     }
+    //
     const data = this.e.msg.replace(/^#云崽写入配置/, '')
     if (!data) {
       this.e.reply('未知字符串')
       return
     }
+    // 先存储之前的配置，做记录
     const msg = readFileSync(dir, 'utf-8')
-    const dir2 = join(process.cwd(), 'config')
-    mkdirSync(dir2, {
-      recursive: true
-    })
+    const dir2 = join(process.cwd(), 'config', 'system')
+    mkdirSync(dir2, { recursive: true })
     const dir3 = join(dir2, `${Date.now()}.js`)
     writeFileSync(dir3, msg)
+    // 修嘎为新数据
     writeFileSync(dir, data)
     this.e.reply('修改完成')
   }
