@@ -148,13 +148,11 @@ export class Update extends Application<'message'> {
     this.rule = [
       {
         reg: /^#更新日志/,
-        fnc: this.updateLog.name,
-        permission: 'master'
+        fnc: this.updateLog.name
       },
       {
         reg: /^#(全部)?(静默)?(强制)?更新/,
-        fnc: this.mandatoryUpdate.name,
-        permission: 'master'
+        fnc: this.mandatoryUpdate.name
       }
     ]
   }
@@ -164,8 +162,12 @@ export class Update extends Application<'message'> {
    * @returns
    */
   async mandatoryUpdate() {
+    if (/详细|详情|面板|面版/.test(this.e.msg)) return
     // 不是主人
-    if (!this.e.isMaster) return
+    if (!this.e.isMaster) {
+      this.e.reply('无权限')
+      return
+    }
     // 执行锁
     if (lock) {
       this.e.reply('正在更新中..请勿重复操作')
@@ -317,6 +319,11 @@ export class Update extends Application<'message'> {
    * @returns
    */
   async updateLog() {
+    // 不是主人
+    if (!this.e.isMaster) {
+      this.e.reply('无权限')
+      return
+    }
     const name = this.e.msg.replace(/^#更新日志/, '')
     // 空的，本地git不存在
     if (name == '' && !isLocalGit()) {

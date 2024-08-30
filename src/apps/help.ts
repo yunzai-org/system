@@ -26,6 +26,11 @@ export class help extends Application<'message'> {
    *
    */
   async helpDelete() {
+    // 不是主人
+    if (!this.e.isMaster) {
+      this.e.reply('无权限')
+      return
+    }
     cache = null
     this.e.reply('清理完成')
   }

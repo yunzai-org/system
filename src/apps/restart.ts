@@ -20,18 +20,15 @@ export class Restart extends Application<'message'> {
     this.rule = [
       {
         reg: /^#(控制台)?(编译)?重启$/,
-        fnc: this.buidlRestart.name,
-        permission: 'master'
+        fnc: this.buidlRestart.name
       },
       {
         reg: /^#(停机|关机)$/,
-        fnc: this.stop.name,
-        permission: 'master'
+        fnc: this.stop.name
       },
       {
         reg: /^#结束进程$/,
-        fnc: this.exit.name,
-        permission: 'master'
+        fnc: this.exit.name
       }
     ]
   }
@@ -41,6 +38,11 @@ export class Restart extends Application<'message'> {
    * @returns
    */
   async buidlRestart() {
+    // 不是主人
+    if (!this.e.isMaster) {
+      this.e.reply('无权限')
+      return
+    }
     // 不是编译
     if (!/^编译/.test(this.e.msg)) {
       // 进入重启
@@ -203,11 +205,15 @@ export class Restart extends Application<'message'> {
    * @returns
    */
   async stop() {
+    // 不是主人
+    if (!this.e.isMaster) {
+      this.e.reply('无权限')
+      return
+    }
     if (lock) {
       this.e.reply('正在调控，请勿重复进行...')
       return
     }
-
     this.e.reply('请再次发送，以确认关机')
 
     const O = new Observer('message')
@@ -286,6 +292,12 @@ export class Restart extends Application<'message'> {
    * @returns
    */
   async exit() {
+    // 不是主人
+    if (!this.e.isMaster) {
+      this.e.reply('无权限')
+      return
+    }
+
     if (lock) {
       this.e.reply('正在调控，请勿重复进行...')
       return

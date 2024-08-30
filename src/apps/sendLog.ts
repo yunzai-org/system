@@ -43,8 +43,7 @@ export class SendLog extends Application<'message'> {
     this.rule = [
       {
         reg: /^#(运行|错误)*日志[0-9]*(.*)/,
-        fnc: this.sendLog.name,
-        permission: 'master'
+        fnc: this.sendLog.name
       }
     ]
   }
@@ -54,6 +53,11 @@ export class SendLog extends Application<'message'> {
    * @returns
    */
   async sendLog() {
+    // 不是主人
+    if (!this.e.isMaster) {
+      this.e.reply('无权限')
+      return
+    }
     const line = this.e.msg.match(/\d+/g)
     if (line) {
       lineNum = Number(line[0])
