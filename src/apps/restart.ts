@@ -19,15 +19,15 @@ export class Restart extends Application<'message'> {
     // rule
     this.rule = [
       {
-        reg: /^#(控制台)?(编译)?重启$/,
+        reg: /^(#|\/)(控制台)?(编译)?重启$/,
         fnc: this.buidlRestart.name
       },
       {
-        reg: /^#(停机|关机)$/,
+        reg: /^(#|\/)(停机|关机)$/,
         fnc: this.stop.name
       },
       {
-        reg: /^#结束进程$/,
+        reg: /^(#|\/)结束进程$/,
         fnc: this.exit.name
       }
     ]
@@ -311,7 +311,7 @@ export class Restart extends Application<'message'> {
     //
     O.use(
       async (e, _, close) => {
-        if (/^#结束进程$/.test(e.msg)) {
+        if (/^(#|\/)结束进程$/.test(e.msg)) {
           process.exit()
         } else {
           e.reply('已取消！')

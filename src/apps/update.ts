@@ -147,11 +147,11 @@ export class Update extends Application<'message'> {
     if (e) this.e = e
     this.rule = [
       {
-        reg: /^#更新日志/,
+        reg: /^(#|\/)更新日志/,
         fnc: this.updateLog.name
       },
       {
-        reg: /^#(全部)?(静默)?(强制)?更新/,
+        reg: /^(#|\/)(全部)?(静默)?(强制)?更新/,
         fnc: this.mandatoryUpdate.name
       }
     ]
@@ -178,7 +178,7 @@ export class Update extends Application<'message'> {
       lock = false
       return
     }
-    const name = this.e.msg.replace(/^#(全部)?(静默)?(强制)?更新/, '')
+    const name = this.e.msg.replace(/^(#|\/)(全部)?(静默)?(强制)?更新/, '')
     // 更新指定插件
     if (name != '') {
       // 判断插件是否存在
@@ -324,7 +324,7 @@ export class Update extends Application<'message'> {
       this.e.reply('无权限')
       return
     }
-    const name = this.e.msg.replace(/^#更新日志/, '')
+    const name = this.e.msg.replace(/^(#|\/)更新日志/, '')
     // 空的，本地git不存在
     if (name == '' && !isLocalGit()) {
       this.e.reply('无更新记录')

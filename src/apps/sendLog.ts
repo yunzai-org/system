@@ -42,7 +42,7 @@ export class SendLog extends Application<'message'> {
     if (e) this.e = e
     this.rule = [
       {
-        reg: /^#(运行|错误)*日志[0-9]*(.*)/,
+        reg: /^(#|\/)(运行|错误)*日志[0-9]*(.*)/,
         fnc: this.sendLog.name
       }
     ]
@@ -62,7 +62,7 @@ export class SendLog extends Application<'message'> {
     if (line) {
       lineNum = Number(line[0])
     } else {
-      keyWord = this.e.msg.replace(/#|运行|错误|日志|\d/g, '')
+      keyWord = this.e.msg.replace(/#|\/|运行|错误|日志|\d/g, '')
     }
     let lf = logFile
     let type = '运行'

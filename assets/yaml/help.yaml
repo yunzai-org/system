@@ -30,24 +30,24 @@
     - icon: 树脂
       title: '#依赖检查XXX'
       desc: './package.json -> { dependencies:{XXX:???} }'
-    - icon: 打卡
-      title: '#云崽配置'
-      desc: '查看yunzai.config.js'
-    - icon: 打卡
-      title: '#云崽写入配置'
-      desc: '#云崽写入配置XXX'
     - icon: 原石
       title: '#依赖锁删除'
       desc: 'rm -rf yarn.lock'
+    - icon: 打卡
+      title: '#云崽配置'
+      desc: '查看yunzai.config.json'
+    - icon: 打卡
+      title: '#云崽(添加|删除)(中间件｜应用)XXX'
+      desc: '#云崽添加应用yz-xiuxian'
     - icon: ledger
-      title: '#shell yarn add yz-system@latest -W'
+      title: '/cwd yarn add yz-system@latest -W'
       desc: '添加依赖yz-system'
     - icon: 浮世
-      title: '#shell yarn'
+      title: '/cwd yarn'
       desc: '执行yarn进行依赖加载'
     - icon: 星辉
-      title: '#shell yarn remove yz-system'
+      title: '/cwd yarn remove yz-system'
       desc: '#依赖移除yz-system'
     - icon: 星辉
-      title: '#shell yarn build'
+      title: '/cwd yarn build'
       desc: '编译ts源码为js'

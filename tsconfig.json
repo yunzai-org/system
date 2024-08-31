@@ -1,4 +1,10 @@
 {
+  "compilerOptions": {
+    "baseUrl": "./",
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
   "include": ["src/**/*.ts", "routes.*.ts"],
   "extends": "yunzai/tsconfig/tsconfig.json"
 }

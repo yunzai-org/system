@@ -1,4 +1,4 @@
-import { join } from 'path'
+import { dirname, join } from 'path'
 import { Application, makeForwardMsg } from 'yunzai'
 import {
   existsSync,
@@ -17,28 +17,23 @@ export class nodeModules extends Application<'message'> {
     this.rule = [
       {
         reg: /^#云崽配置$/,
-        fnc: this.config.name,
-        permission: 'master'
+        fnc: this.showConfig.name
       },
       {
         reg: /^#依赖配置$/,
-        fnc: this.packagelist.name,
-        permission: 'master'
+        fnc: this.packagelist.name
       },
       {
         reg: /^#依赖检查/,
-        fnc: this.checkPackagelist.name,
-        permission: 'master'
+        fnc: this.checkPackagelist.name
       },
       {
         reg: /^#依赖锁删除$/,
-        fnc: this.removePackageLock.name,
-        permission: 'master'
+        fnc: this.removePackageLock.name
       },
       {
-        reg: /^#云崽写入配置/,
-        fnc: this.writeConifig.name,
-        permission: 'master'
+        reg: /^#云崽(添加|删除)(中间件|应用)/,
+        fnc: this.updateConfig.name
       }
     ]
   }
@@ -47,6 +42,11 @@ export class nodeModules extends Application<'message'> {
    * 依赖列表
    */
   async packagelist() {
+    // 不是主人
+    if (!this.e.isMaster) {
+      this.e.reply('无权限')
+      return
+    }
     const dir = join(process.cwd(), 'package.json')
     const pkg = JSON.parse(readFileSync(dir, 'utf-8'))
     let arr = []
@@ -81,6 +81,11 @@ export class nodeModules extends Application<'message'> {
    * 校验依赖
    */
   checkPackagelist() {
+    // 不是主人
+    if (!this.e.isMaster) {
+      this.e.reply('无权限')
+      return
+    }
     const name = this.e.msg.replace(/^#依赖检查/, '')
     const dir = join(process.cwd(), 'node_modules', name)
     if (!existsSync(dir)) {
@@ -124,6 +129,11 @@ export class nodeModules extends Application<'message'> {
   }
 
   async packagelistInsall() {
+    // 不是主人
+    if (!this.e.isMaster) {
+      this.e.reply('无权限')
+      return
+    }
     await this.e.reply('yarn正在校验依赖...')
     getCommandOutput('yarn -v')
       .then(() => {
@@ -147,6 +157,11 @@ export class nodeModules extends Application<'message'> {
    * @returns
    */
   async removePackagelist() {
+    // 不是主人
+    if (!this.e.isMaster) {
+      this.e.reply('无权限')
+      return
+    }
     const name = this.e.msg.replace(/^#依赖移除/, '')
     if (!name) {
       this.e.reply('未知字符')
@@ -175,6 +190,11 @@ export class nodeModules extends Application<'message'> {
    * @returns
    */
   async removePackageLock() {
+    // 不是主人
+    if (!this.e.isMaster) {
+      this.e.reply('无权限')
+      return
+    }
     const dir = join(process.cwd(), 'yarn.lock')
     if (!existsSync(dir)) {
       this.e.reply('不存在 yarn.lock')
@@ -189,6 +209,11 @@ export class nodeModules extends Application<'message'> {
    * @returns
    */
   async addPackagelist() {
+    // 不是主人
+    if (!this.e.isMaster) {
+      this.e.reply('无权限')
+      return
+    }
     const name = this.e.msg.replace(/^#依赖添加/, '')
     if (!name) {
       this.e.reply('未知字符')
@@ -216,6 +241,11 @@ export class nodeModules extends Application<'message'> {
    *
    */
   async build() {
+    // 不是主人
+    if (!this.e.isMaster) {
+      this.e.reply('无权限')
+      return
+    }
     await this.e.reply('yarn正在校验依赖...')
     getCommandOutput('yarn -v')
       .then(() => {
@@ -250,10 +280,15 @@ export class nodeModules extends Application<'message'> {
   /**
    *
    */
-  config() {
-    const dir = join(process.cwd(), 'yunzai.config.js')
+  showConfig() {
+    // 不是主人
+    if (!this.e.isMaster) {
+      this.e.reply('无权限')
+      return
+    }
+    const dir = join(process.cwd(), 'yunzai.config.json')
     if (!existsSync(dir)) {
-      this.e.reply('不存在 yunzai.config.js')
+      this.e.reply('不存在 yunzai.config.json')
       return
     }
     const msg = readFileSync(dir, 'utf-8')
@@ -263,26 +298,116 @@ export class nodeModules extends Application<'message'> {
   /**
    *
    */
-  writeConifig() {
-    const dir = join(process.cwd(), 'yunzai.config.js')
-    if (!existsSync(dir)) {
-      this.e.reply('不存在 yunzai.config.js')
+  updateConfig() {
+    // 不是主人
+    if (!this.e.isMaster) {
+      this.e.reply('无权限')
       return
     }
+    const dir = join(process.cwd(), 'yunzai.config.json')
+    if (!existsSync(dir)) {
+      // 不存在就创建
+      writeFileSync(
+        dir,
+        JSON.stringify({
+          applications: [],
+          middlewares: []
+        })
+      )
+    }
     //
-    const data = this.e.msg.replace(/^#云崽写入配置/, '')
-    if (!data) {
+    const name = this.e.msg.replace(/^#云崽(添加|删除)(中间件|应用)/, '')
+    if (!name || name == '') {
       this.e.reply('未知字符串')
       return
     }
-    // 先存储之前的配置，做记录
-    const msg = readFileSync(dir, 'utf-8')
-    const dir2 = join(process.cwd(), 'config', 'system')
-    mkdirSync(dir2, { recursive: true })
-    const dir3 = join(dir2, `${Date.now()}.js`)
-    writeFileSync(dir3, msg)
-    // 修嘎为新数据
-    writeFileSync(dir, data)
-    this.e.reply('修改完成')
+    // 备份之前的记录
+    const condigData = readFileSync(dir, 'utf-8')
+    // 保存备份
+    const save = () => {
+      const dir3 = join(
+        join(process.cwd(), 'config', 'system'),
+        `${Date.now()}.json`
+      )
+      mkdirSync(dirname(dir3), { recursive: true })
+      writeFileSync(dir3, condigData)
+    }
+    //
+    const Data = JSON.parse(condigData)
+    //
+    if (/添加/.test(this.e.msg)) {
+      // 添加
+      if (/中间件/.test(this.e.msg)) {
+        if (!Array.isArray(Data?.middlewares)) {
+          Data.middlewares = []
+          Data.middlewares.push(name)
+        } else {
+          if (Data.middlewares.includes(name)) {
+            this.e.reply('已存在')
+            return
+          } else {
+            // 保存备份
+            save()
+            Data.middlewares.push(name)
+            // 保存数据
+            writeFileSync(dir, Data)
+            this.e.reply('修改完成')
+          }
+        }
+      } else {
+        if (!Array.isArray(Data?.applications)) {
+          Data.applications = []
+          Data.applications.push(name)
+        } else {
+          if (Data.applications.includes(name)) {
+            this.e.reply('已存在')
+            return
+          } else {
+            // 保存备份
+            save()
+            Data.applications.push(name)
+            // 保存数据
+            writeFileSync(dir, Data)
+            this.e.reply('修改完成')
+          }
+        }
+      }
+    } else {
+      if (/中间件/.test(this.e.msg)) {
+        if (!Array.isArray(Data?.middlewares)) {
+          this.e.reply('不存在')
+          return
+        } else {
+          if (Data.middlewares.includes(name)) {
+            // 保存备份
+            save()
+            Data.middlewares = Data.middlewares.filter(item => item !== name)
+            // 保存数据
+            writeFileSync(dir, Data)
+            this.e.reply('修改完成')
+          } else {
+            this.e.reply('不存在')
+            return
+          }
+        }
+      } else {
+        if (!Array.isArray(Data?.applications)) {
+          this.e.reply('不存在')
+          return
+        } else {
+          if (Data.applications.includes(name)) {
+            // 保存备份
+            save()
+            Data.applications = Data.applications.filter(item => item !== name)
+            // 保存数据
+            writeFileSync(dir, Data)
+            this.e.reply('修改完成')
+          } else {
+            this.e.reply('不存在')
+            return
+          }
+        }
+      }
+    }
   }
 }
