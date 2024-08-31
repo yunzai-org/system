@@ -1,40 +1,44 @@
-import { defineConfig } from 'yunzai/rollup'
+import { defineConfig } from 'rollup'
 import typescript from '@rollup/plugin-typescript'
-import babel from '@rollup/plugin-babel'
-export default defineConfig({
-  plugins: [
-    babel({
-      presets: [
-        '@babel/preset-env',
-        '@babel/preset-react',
-        '@babel/preset-typescript'
-      ],
-      // 编译插件
-      plugins: [
-        [
-          'module-resolver',
+import { dirname, resolve } from 'path'
+import { fileURLToPath } from 'url'
+import alias from '@rollup/plugin-alias'
+import dts from 'rollup-plugin-dts'
+import { Options } from 'yunzai/rollup'
+export default defineConfig([
+  {
+    ...Options,
+    plugins: [
+      // 处理ts文件
+      typescript({
+        compilerOptions: {
+          outDir: 'lib'
+        },
+        include: ['src/**/*']
+      })
+    ]
+  },
+  {
+    ...Options,
+    plugins: [
+      // 处理别名
+      alias({
+        entries: [
           {
-            // 根
-            root: ['./'],
-            // @ 别名 -> 当前目录
-            alias: {
-              '@': './'
-            }
+            find: '@',
+            replacement: resolve(dirname(fileURLToPath(import.meta.url)), 'src')
           }
         ]
-      ]
-    }),
-    typescript({
-      compilerOptions: {
-        // 生产声明文件
-        declaration: true,
-        // 输出目录
-        declarationDir: 'lib',
-        // 输出目录
-        outDir: 'lib'
-      },
-      // 包含
-      include: ['src/**/*']
-    })
-  ]
-})
+      }),
+      // 处理ts文件
+      typescript({
+        compilerOptions: {
+          outDir: 'lib'
+        },
+        include: ['src/**/*']
+      }),
+      // 所有的dts文件输出
+      dts()
+    ]
+  }
+])

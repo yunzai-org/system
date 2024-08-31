@@ -1,9 +1,9 @@
-import { Application, applicationOptions } from 'yunzai'
+import { Application, applicationOptions, useEvent } from 'yunzai'
 import * as apps from './apps.js'
 import { Init } from './model/init.js'
 export default () => {
   const rules: {
-    reg: RegExp | string
+    reg: RegExp | string | undefined
     key: string
   }[] = []
   // options
@@ -24,27 +24,31 @@ export default () => {
       // init
       Init()
     },
-    mounted(e) {
+    async mounted(e) {
       // 存储
       const data = []
       // 如果key不存在
       const cache = {}
       // 使用event以确保得到正常类型
-      if (e['msg']) {
-        for (const item of rules) {
-          // 匹配正则
-          // 存在key
-          // 第一次new
-          if (
-            new RegExp(item.reg).test(e['msg']) &&
-            apps[item.key] &&
-            !cache[item.key]
-          ) {
-            cache[item.key] = true
-            data.push(new apps[item.key]())
+      await useEvent(
+        e => {
+          for (const item of rules) {
+            // 匹配正则
+            // 存在key
+            // 第一次new
+            if (
+              item.reg &&
+              new RegExp(item.reg).test(e['msg']) &&
+              apps[item.key] &&
+              !cache[item.key]
+            ) {
+              cache[item.key] = true
+              data.push(new apps[item.key]())
+            }
           }
-        }
-      }
+        },
+        [e, 'message']
+      )
       // back
       return data
     }
