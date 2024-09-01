@@ -1,7 +1,6 @@
 import { Application, ConfigController, Observer } from 'yunzai'
 import { Store } from '../model/store'
 import pm2 from 'pm2'
-import { getCommandOutput } from '../model/utils'
 
 // 执行锁
 let lock = false
@@ -19,8 +18,8 @@ export class Restart extends Application<'message'> {
     // rule
     this.rule = [
       {
-        reg: /^(#|\/)(控制台)?(编译)?重启$/,
-        fnc: this.buidlRestart.name
+        reg: /^(#|\/)(控制台)?重启$/,
+        fnc: this.restart.name
       },
       {
         reg: /^(#|\/)(停机|关机)$/,
@@ -34,60 +33,16 @@ export class Restart extends Application<'message'> {
   }
 
   /**
-   *
-   * @returns
+   * 重启方法
+   * @returns {Promise<void>}
    */
-  async buidlRestart() {
+  async restart() {
     // 不是主人
     if (!this.e.isMaster) {
       this.e.reply('无权限')
       return
     }
-    // 不是编译
-    if (!/^编译/.test(this.e.msg)) {
-      // 进入重启
-      this.restart()
-      return
-    }
 
-    getCommandOutput('yarn -v')
-      .then(() => {
-        //
-        getCommandOutput('yarn')
-          .then(async message => {
-            logger.mark(message)
-            await this.e.reply('yarn依赖校验完成!')
-            //
-            getCommandOutput('yarn build')
-              .then(async message => {
-                logger.mark(message)
-                await this.e.reply('yarn编译完成!')
-              })
-              .catch(err => {
-                logger.error(err)
-                // 解锁
-                lock = false
-                this.e.reply('yarn 编译错误,请手动检查！')
-              })
-          })
-          .catch(() => {
-            // 解锁
-            lock = false
-            this.e.reply('yarn 依赖存在错误，请手动检查！')
-          })
-      })
-      .catch(() => {
-        // 解锁
-        lock = false
-        this.e.reply('找不到 yarn , 请安装\nnpm i yarn@1.19.1 -g')
-      })
-  }
-
-  /**
-   * 重启方法
-   * @returns {Promise<void>}
-   */
-  async restart() {
     if (lock) {
       this.e.reply('正在调控，请勿重复进行...')
       return

@@ -240,46 +240,6 @@ export class nodeModules extends Application<'message'> {
   /**
    *
    */
-  async build() {
-    // 不是主人
-    if (!this.e.isMaster) {
-      this.e.reply('无权限')
-      return
-    }
-    await this.e.reply('yarn正在校验依赖...')
-    getCommandOutput('yarn -v')
-      .then(() => {
-        //
-        getCommandOutput('yarn')
-          .then(async message => {
-            logger.mark(message)
-            await this.e.reply('yarn依赖校验完成!')
-            //
-            getCommandOutput('yarn build')
-              .then(async message => {
-                logger.mark(message)
-                await this.e.reply('yarn编译完成!')
-              })
-              .catch(err => {
-                logger.error(err)
-                this.e.reply('yarn 编译错误,请手动检查！')
-              })
-          })
-          .catch(err => {
-            logger.error(err)
-            this.e.reply('yarn 依赖存在错误，请手动检查！')
-          })
-      })
-      .catch(() => {
-        this.e.reply('找不到 yarn , 请安装\nnpm i yarn@1.19.1 -g')
-      })
-
-    //
-  }
-
-  /**
-   *
-   */
   showConfig() {
     // 不是主人
     if (!this.e.isMaster) {
