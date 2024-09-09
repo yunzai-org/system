@@ -11,13 +11,12 @@
 yarn add yz-system@latest -W
 ```
 
-- yunzai.config.js
+- yunzai.config.json
 
-```js
-import { defineConfig } from 'yunzai'
-export default defineConfig({
-  applications: ['yz-system']
-})
+```json
+{
+  "applications": ["yz-system"]
+}
 ```
 
 - use
@@ -46,6 +45,10 @@ yarn app
 ```
 
 ## 更新记录
+
+### 1.0.12
+
+- 消除实例化
 
 ### 1.0.11
 
